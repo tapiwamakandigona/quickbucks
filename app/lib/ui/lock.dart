@@ -158,29 +158,45 @@ Future<String?> _askPin(BuildContext context, String title) async {
   final ctrl = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: ctrl,
-        autofocus: true,
-        obscureText: true,
-        keyboardType: TextInputType.number,
-        maxLength: 6,
-        style: const TextStyle(fontSize: 24, letterSpacing: 8),
-      ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel')),
-        FilledButton(
-          onPressed: () {
-            final v = ctrl.text.trim();
-            if (v.length < 4 || int.tryParse(v) == null) return;
-            Navigator.pop(ctx, v);
-          },
-          child: const Text('OK'),
-        ),
-      ],
-    ),
+    builder: (ctx) {
+      String? error;
+      return StatefulBuilder(builder: (ctx, setDialog) {
+        return AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                style: const TextStyle(fontSize: 24, letterSpacing: 8),
+              ),
+              if (error != null)
+                Text(error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 15)),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final v = ctrl.text.trim();
+                if (v.length < 4 || int.tryParse(v) == null) {
+                  setDialog(() => error = 'The PIN must be 4-6 numbers');
+                  return;
+                }
+                Navigator.pop(ctx, v);
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      });
+    },
   );
 }

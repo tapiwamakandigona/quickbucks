@@ -214,6 +214,7 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
   final due = fromIso(loan.dueDate);
   if (today().isAfter(due)) paidOn = due;
 
+  String? sheetError;
   final result = await showModalBottomSheet<(int, DateTime)>(
     context: context,
     isScrollControlled: true,
@@ -263,15 +264,23 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
                 }
               },
             ),
+            if (sheetError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(sheetError!,
+                    style: const TextStyle(
+                        color: kDanger,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600)),
+              ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () {
                 final cents = parseUsdToCents(amountCtrl.text);
                 if (cents == null || cents <= 0 || cents > out) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                      content: Text(cents == null || cents <= 0
-                          ? 'Enter a valid amount'
-                          : 'That is more than the ${money(out)} owed')));
+                  setSheet(() => sheetError = cents == null || cents <= 0
+                      ? 'Enter a valid amount'
+                      : 'That is more than the ${money(out)} owed');
                   return;
                 }
                 Navigator.pop(ctx, (cents, paidOn));
@@ -314,6 +323,7 @@ class _TakeLoanSheetState extends State<_TakeLoanSheet> {
   Member? _member;
   final _amountCtrl = TextEditingController();
   DateTime _date = today();
+  String? _error;
 
   @override
   Widget build(BuildContext context) {
@@ -359,16 +369,25 @@ class _TakeLoanSheetState extends State<_TakeLoanSheet> {
               }
             },
           ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(_error!,
+                  style: const TextStyle(
+                      color: kDanger,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600)),
+            ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () {
               final cents = parseUsdToCents(_amountCtrl.text);
               if (_member == null) {
-                showNote(context, 'Choose a member', error: true);
+                setState(() => _error = 'Choose a member');
                 return;
               }
               if (cents == null || cents <= 0) {
-                showNote(context, 'Enter a valid amount', error: true);
+                setState(() => _error = 'Enter a valid amount');
                 return;
               }
               Navigator.pop(context, (_member!, cents, _date));
