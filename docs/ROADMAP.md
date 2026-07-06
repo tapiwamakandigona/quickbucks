@@ -14,9 +14,11 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Property test: Σ payouts == cash_on_hand for 2000 random scenarios
 - ☑ GitHub Actions CI: format + analyze + test on every push/PR
 
-## M2 — App scaffold + storage ☐
-- ☐ Flutter project in `app/`, Material 3 theme (green/gold, large type)
-- ☐ drift schema per DATA_MODEL.md, DAOs
+## M2 — App scaffold + storage ◐
+- ☑ Flutter project in `app/` (Android, `com.tapiwa.quickbucks`)
+- ☑ drift schema per DATA_MODEL.md + Repo layer (all mutations via domain engine)
+- ☑ Repo integration tests (in-memory SQLite): full Mary story, share-out invariants
+- ☐ Material 3 theme (green/gold, large type)
 - ☐ Cycle creation flow (members + multipliers, start/end date)
 
 ## M3 — Daily use screens ☐
