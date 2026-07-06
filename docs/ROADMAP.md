@@ -60,3 +60,9 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Sentry crash reporting (gated on --dart-define=SENTRY_DSN; owner to provide DSN)
 - ☑ Inline error text inside bottom sheets (was hidden behind sheet)
 - ☐ Appwrite cloud backup (v1.2)
+
+## v1.1.1 (2026-07-06) — UI: "Ledger on Paper"
+- ☑ Token design system in app/lib/theme.dart (QSpace/QRadius/QType, tabular money figures)
+- ☑ Warm paper surfaces + green ink, hairline borders instead of shadows, paper appbar
+- ☑ Flat FAB, gold/danger container tokens, floating dark-ink snackbars
+- Inspired by owner's subagent-toolkit frontend-design skill + LanLink v4 "Ember on Paper"

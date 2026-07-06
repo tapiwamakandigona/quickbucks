@@ -61,7 +61,7 @@ class MemberDetailScreen extends StatelessWidget {
               title: Text(
                   'Paid ${paid.length} of ${saturdays.length} Saturdays'),
               subtitle: Text(missed.isEmpty
-                  ? 'Not a single one missed 🎉'
+                  ? 'Not a single one missed!'
                   : 'Missing: ${missed.map((s) => prettyDate(s)).join(', ')}'),
             ),
           ),

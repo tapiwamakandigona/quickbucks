@@ -45,7 +45,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             if (collecting)
               Card(
-                color: kGold.withValues(alpha: 0.15),
+                color: kGoldContainer,
                 child: const Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
@@ -58,7 +58,7 @@ class HomeScreen extends StatelessWidget {
               ),
             if (app.overdue.isNotEmpty)
               Card(
-                color: kDanger.withValues(alpha: 0.08),
+                color: kDangerContainer,
                 child: ListTile(
                   leading: const Icon(Icons.warning_amber, color: kDanger),
                   title: Text(
@@ -71,20 +71,25 @@ class HomeScreen extends StatelessWidget {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: BigStat(
-                          label: 'Cash in the box',
-                          value: money(totals?.cashOnHandCents ?? 0)),
-                    ),
-                    Expanded(
-                      child: BigStat(
-                          label: 'Pool value (with loans)',
-                          value: money(totals?.poolValueCents ?? 0),
-                          color: const Color(0xFF1B6E3C)),
-                    ),
-                  ],
+                child: IntrinsicHeight(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: BigStat(
+                            label: 'Cash in the box',
+                            value: money(totals?.cashOnHandCents ?? 0)),
+                      ),
+                      VerticalDivider(
+                          width: QSpace.x6,
+                          color: Theme.of(context).colorScheme.outlineVariant),
+                      Expanded(
+                        child: BigStat(
+                            label: 'Pool with loans',
+                            value: money(totals?.poolValueCents ?? 0),
+                            color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

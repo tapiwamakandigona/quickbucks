@@ -103,17 +103,15 @@ class BigStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 15, color: Colors.black54)),
-        const SizedBox(height: 4),
+        Text(label.toUpperCase(),
+            style: QType.overline.copyWith(color: scheme.onSurfaceVariant)),
+        const SizedBox(height: QSpace.x1),
         Text(value,
-            style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: color ?? Colors.black87)),
+            style: QType.money.copyWith(color: color ?? scheme.onSurface)),
       ],
     );
   }

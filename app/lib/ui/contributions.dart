@@ -47,8 +47,13 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: ChoiceChip(
-                    label: Text(
-                        '${done ? '✓ ' : ''}${s.day}/${s.month}/${s.year}'),
+                    label: Text('${s.day}/${s.month}/${s.year}',
+                        style: done
+                            ? null
+                            : TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)),
                     selected: s == selected,
                     onSelected: (_) => setState(() => _selected = s),
                   ),

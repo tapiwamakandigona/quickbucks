@@ -36,7 +36,7 @@ class LoansScreen extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 96, top: 8),
         children: [
           if (app.overdue.isNotEmpty) ...[
-            _header(context, '⚠️ Past the due Saturday'),
+            _header(context, 'Past the due Saturday', color: kDanger),
             for (final l in app.overdue) _OverdueCard(loan: l),
           ],
           if (active.isNotEmpty) ...[
@@ -59,9 +59,14 @@ class LoansScreen extends StatelessWidget {
     );
   }
 
-  Widget _header(BuildContext context, String text) => Padding(
+  Widget _header(BuildContext context, String text, {Color? color}) =>
+      Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-        child: Text(text, style: Theme.of(context).textTheme.titleLarge),
+        child: Text(text,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(color: color)),
       );
 
   Future<void> _takeLoan(BuildContext context) async {
