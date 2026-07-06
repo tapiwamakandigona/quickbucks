@@ -58,7 +58,7 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Text('Saturday ${prettyDate(selected)}',
+            child: Text('Saturday ${satDate(selected)}',
                 style: Theme.of(context).textTheme.titleLarge),
           ),
           Expanded(

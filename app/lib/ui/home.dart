@@ -91,7 +91,7 @@ class HomeScreen extends StatelessWidget {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.event_available, size: 32),
-                  title: Text('Saturday ${prettyDate(thisSat)}'),
+                  title: Text('Saturday ${satDate(thisSat)}'),
                   subtitle: Text(
                       '$tickedCount of ${app.members.length} members paid'),
                   trailing: const Icon(Icons.chevron_right),

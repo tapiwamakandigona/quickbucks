@@ -81,7 +81,7 @@ class LoansScreen extends StatelessWidget {
       title: 'Give out this loan?',
       message: '${member.name} takes ${money(cents)} on ${prettyDate(date)}.\n\n'
           'They will owe ${money(owed)} (20% added), '
-          'to pay back by Saturday ${prettyDate(due)}.',
+          'to pay back by Saturday ${satDate(due)}.',
       yes: 'Give loan',
     );
     if (!ok || !context.mounted) return;
@@ -149,10 +149,10 @@ class _OverdueCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
-                'This was due Saturday ${prettyDate(fromIso(loan.dueDate))}. '
+                'This was due Saturday ${satDate(fromIso(loan.dueDate))}. '
                 'If it was paid on time, record the payment. Otherwise the '
                 'rest becomes a new loan: ${money(newOwed)} to pay by '
-                'Saturday ${prettyDate(newDue)}.',
+                'Saturday ${satDate(newDue)}.',
                 style: const TextStyle(fontSize: 15, height: 1.4)),
             const SizedBox(height: 12),
             Row(
@@ -174,7 +174,7 @@ class _OverdueCard extends StatelessWidget {
                             '${member.name}\'s unpaid ${money(out)} becomes a '
                             'new loan from Sunday ${prettyDate(sunday)}.\n\n'
                             'They will owe ${money(newOwed)} (20% added), due '
-                            'Saturday ${prettyDate(newDue)}.',
+                            'Saturday ${satDate(newDue)}.',
                         yes: 'Roll over',
                       );
                       if (!ok || !context.mounted) return;

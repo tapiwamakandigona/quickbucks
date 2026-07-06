@@ -7,6 +7,10 @@ import '../theme.dart';
 final _dateFmt = DateFormat('EEE, d MMM yyyy');
 String prettyDate(DateTime d) => _dateFmt.format(d);
 
+/// For use right after the word "Saturday": no repeated weekday.
+final _satFmt = DateFormat('d MMMM yyyy');
+String satDate(DateTime d) => _satFmt.format(d);
+
 String money(int cents) => domain.formatUsd(cents);
 
 /// Parses "12", "12.5", "12.50", "$12.50" → cents. Returns null if invalid.

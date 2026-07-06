@@ -36,14 +36,14 @@ ThemeData quickbucksTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(64, 56),
-        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: 'Roboto', fontSize: 18, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(64, 56),
-        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: 'Roboto', fontSize: 18, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
@@ -58,8 +58,12 @@ ThemeData quickbucksTheme() {
     ),
     listTileTheme: const ListTileThemeData(
       titleTextStyle: TextStyle(
-          fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
-      subtitleTextStyle: TextStyle(fontSize: 15, color: Colors.black54),
+          fontFamily: 'Roboto',
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87),
+      subtitleTextStyle:
+          TextStyle(fontFamily: 'Roboto', fontSize: 15, color: Colors.black54),
       minVerticalPadding: 12,
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -69,7 +73,7 @@ ThemeData quickbucksTheme() {
     ),
     snackBarTheme: const SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      contentTextStyle: TextStyle(fontSize: 16),
+      contentTextStyle: TextStyle(fontFamily: 'Roboto', fontSize: 16),
     ),
   );
 }

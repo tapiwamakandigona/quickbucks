@@ -1,0 +1,3 @@
+tags:
+  golden:
+    # Screenshot goldens are environment-sensitive; excluded in CI.

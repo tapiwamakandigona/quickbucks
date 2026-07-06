@@ -92,8 +92,11 @@ class _LockScreenState extends State<LockScreen> {
                                     _tap(ch);
                                   }
                                 },
-                                child: Text(ch,
-                                    style: const TextStyle(fontSize: 26)),
+                                child: ch == '⌫'
+                                    ? const Icon(Icons.backspace_outlined,
+                                        size: 28)
+                                    : Text(ch,
+                                        style: const TextStyle(fontSize: 26)),
                               ),
                       ),
                     ),
