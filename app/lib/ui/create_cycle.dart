@@ -68,7 +68,7 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
           );
       if (mounted) await context.read<AppState>().refresh();
     } catch (e) {
-      if (mounted) showNote(context, 'Could not start: $e', error: true);
+      if (mounted) showNote(context, 'Could not start: ${friendlyError(e)}', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

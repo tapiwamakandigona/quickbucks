@@ -94,7 +94,7 @@ class LoansScreen extends StatelessWidget {
       await app.refresh();
       if (context.mounted) showNote(context, 'Loan recorded ✓');
     } catch (e) {
-      if (context.mounted) showNote(context, 'Could not save: $e', error: true);
+      if (context.mounted) showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
     }
   }
 }
@@ -186,7 +186,7 @@ class _OverdueCard extends StatelessWidget {
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          showNote(context, 'Could not roll over: $e',
+                          showNote(context, 'Could not roll over: ${friendlyError(e)}',
                               error: true);
                         }
                       }
@@ -298,7 +298,7 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
     await app.refresh();
     if (context.mounted) showNote(context, 'Payment recorded ✓');
   } catch (e) {
-    if (context.mounted) showNote(context, 'Could not save: $e', error: true);
+    if (context.mounted) showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
   }
 }
 

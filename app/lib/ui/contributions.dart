@@ -89,7 +89,7 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          showNote(context, 'Could not save: $e', error: true);
+                          showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
                         }
                       }
                       await app.refresh();

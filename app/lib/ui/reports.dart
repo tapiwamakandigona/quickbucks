@@ -51,7 +51,7 @@ Future<void> exportCyclePdf(BuildContext context, Cycle cycle) async {
             'QuickBucks ${cycle.name} ${iso(today())}.pdf'.replaceAll('/', '-'));
   } catch (e) {
     if (context.mounted) {
-      showNote(context, 'Could not make the PDF: $e', error: true);
+      showNote(context, 'Could not make the PDF: ${friendlyError(e)}', error: true);
     }
   }
 }

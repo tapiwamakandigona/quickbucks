@@ -158,7 +158,7 @@ class CycleSettingsScreen extends StatelessWidget {
       await app.refresh();
       if (context.mounted) showNote(context, 'Date updated ✓');
     } catch (e) {
-      if (context.mounted) showNote(context, 'Could not update: $e', error: true);
+      if (context.mounted) showNote(context, 'Could not update: ${friendlyError(e)}', error: true);
     }
   }
 
@@ -178,7 +178,7 @@ class CycleSettingsScreen extends StatelessWidget {
       await app.refresh();
       if (context.mounted) showNote(context, 'Weekly payments ended ✓');
     } catch (e) {
-      if (context.mounted) showNote(context, 'Could not end: $e', error: true);
+      if (context.mounted) showNote(context, 'Could not end: ${friendlyError(e)}', error: true);
     }
   }
 
@@ -209,7 +209,7 @@ class CycleSettingsScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        showNote(context, 'Could not share out: $e', error: true);
+        showNote(context, 'Could not share out: ${friendlyError(e)}', error: true);
       }
     }
   }
@@ -228,7 +228,7 @@ Future<void> _backup(BuildContext context) async {
         text: 'QuickBucks backup — keep this file safe.');
   } catch (e) {
     if (context.mounted) {
-      showNote(context, 'Could not make the backup: $e', error: true);
+      showNote(context, 'Could not make the backup: ${friendlyError(e)}', error: true);
     }
   }
 }
@@ -257,7 +257,7 @@ Future<void> _restore(BuildContext context) async {
     }
   } catch (e) {
     if (context.mounted) {
-      showNote(context, 'Restore failed — nothing was changed: $e',
+      showNote(context, 'Restore failed — nothing was changed: ${friendlyError(e)}',
           error: true);
     }
   }

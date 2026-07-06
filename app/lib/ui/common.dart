@@ -13,6 +13,25 @@ String satDate(DateTime d) => _satFmt.format(d);
 
 String money(int cents) => domain.formatUsd(cents);
 
+/// Turns exceptions into calm, plain-English text (no "Bad state:" jargon).
+String friendlyError(Object e) {
+  var msg = e.toString();
+  for (final prefix in [
+    'Bad state: ',
+    'Invalid argument(s): ',
+    'FormatException: ',
+    'Exception: ',
+    'ArgumentError: ',
+  ]) {
+    if (msg.startsWith(prefix)) msg = msg.substring(prefix.length);
+  }
+  // Very long / technical messages help nobody at the market.
+  if (msg.length > 160 || msg.contains('SqliteException')) {
+    return 'Something went wrong. Nothing was saved — please try again.';
+  }
+  return msg;
+}
+
 /// Parses "12", "12.5", "12.50", "$12.50" → cents. Returns null if invalid.
 int? parseUsdToCents(String input) {
   final cleaned = input.replaceAll(r'$', '').replaceAll(',', '').trim();
