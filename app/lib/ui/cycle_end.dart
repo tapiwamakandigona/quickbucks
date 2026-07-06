@@ -1,12 +1,20 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
+import 'package:share_plus/share_plus.dart';
 
+import '../data/backup.dart' as backup;
 import '../data/db.dart';
 import '../data/repo.dart';
 import '../state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'lock.dart';
 import 'reports.dart';
 
 class CycleSettingsScreen extends StatelessWidget {
@@ -76,6 +84,32 @@ class CycleSettingsScreen extends StatelessWidget {
               ),
             ),
           ],
+          Card(
+            child: Column(children: [
+              ListTile(
+                leading: const Icon(Icons.save_alt, size: 32),
+                title: const Text('Back up my records'),
+                subtitle: const Text(
+                    'Saves everything to a file you can keep anywhere safe'),
+                onTap: () => _backup(context),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.settings_backup_restore, size: 32),
+                title: const Text('Restore from a backup'),
+                subtitle:
+                    const Text('Replaces what is on this phone with the file'),
+                onTap: () => _restore(context),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.password, size: 32),
+                title: const Text('App PIN'),
+                subtitle: const Text('Lock QuickBucks with a secret number'),
+                onTap: () => managePin(context),
+              ),
+            ]),
+          ),
           if (app.archived.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
@@ -177,6 +211,54 @@ class CycleSettingsScreen extends StatelessWidget {
       if (context.mounted) {
         showNote(context, 'Could not share out: $e', error: true);
       }
+    }
+  }
+}
+
+Future<void> _backup(BuildContext context) async {
+  final app = context.read<AppState>();
+  try {
+    final snapshot = await backup.exportSnapshot(app.repo.db);
+    final json = backup.exportSnapshotJson(snapshot);
+    final dir = await getTemporaryDirectory();
+    final file = File(
+        '${dir.path}/QuickBucks backup ${iso(today())}.json');
+    await file.writeAsString(json);
+    await Share.shareXFiles([XFile(file.path)],
+        text: 'QuickBucks backup — keep this file safe.');
+  } catch (e) {
+    if (context.mounted) {
+      showNote(context, 'Could not make the backup: $e', error: true);
+    }
+  }
+}
+
+Future<void> _restore(BuildContext context) async {
+  final app = context.read<AppState>();
+  final picked = await FilePicker.platform
+      .pickFiles(type: FileType.any, withData: true);
+  final data = picked?.files.single.bytes;
+  if (data == null || !context.mounted) return;
+  final ok = await confirmAction(
+    context,
+    title: 'Restore from this backup?',
+    message: 'Everything currently in the app will be REPLACED by the '
+        'backup file. This cannot be undone.\n\n'
+        'Only continue if this is the right file.',
+    yes: 'Replace everything',
+  );
+  if (!ok || !context.mounted) return;
+  try {
+    await backup.importSnapshot(app.repo.db, utf8.decode(data));
+    await app.refresh();
+    if (context.mounted) {
+      showNote(context, 'Backup restored ✓');
+      Navigator.popUntil(context, (r) => r.isFirst);
+    }
+  } catch (e) {
+    if (context.mounted) {
+      showNote(context, 'Restore failed — nothing was changed: $e',
+          error: true);
     }
   }
 }

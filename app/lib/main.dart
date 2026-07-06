@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/db.dart';
+import 'data/pin.dart' as pin;
 import 'data/repo.dart';
 import 'state.dart';
 import 'theme.dart';
 import 'ui/create_cycle.dart';
 import 'ui/home.dart';
+import 'ui/lock.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,14 +37,32 @@ class QuickBucksApp extends StatelessWidget {
   }
 }
 
-class _Root extends StatelessWidget {
+class _Root extends StatefulWidget {
   const _Root();
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> {
+  bool? _locked;
+
+  @override
+  void initState() {
+    super.initState();
+    pin.pinIsSet().then((set) {
+      if (mounted) setState(() => _locked = set);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
-    if (app.loading) {
+    if (app.loading || _locked == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_locked == true) {
+      return LockScreen(onUnlocked: () => setState(() => _locked = false));
     }
     if (app.cycle == null) {
       return const CreateCycleScreen();

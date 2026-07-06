@@ -41,11 +41,13 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Share sheet integration; export anytime + per archived cycle
 - ☐ Verify rendering on device
 
-## M6 — Backup & restore ☐
-- ☐ Appwrite login + snapshot upload (manual button + auto after changes when online)
-- ☐ Restore-on-fresh-install flow
+## M6 — Backup & restore ◐
+- ☑ Local backup: full-ledger JSON export via share sheet + restore from file (validated, transactional)
+- ☑ App PIN lock (owner request): salted-hash PIN, lock screen, set/change/remove
+- ☐ v1.1: Appwrite cloud snapshot upload + restore-on-fresh-install
 
-## M7 — Ship ☐
-- ☐ App icon + name polish ("QuickBucks", nice for mom)
+## M7 — Ship ◐
+- ☑ App icon (green/gold coin) + label "QuickBucks"
+- ☑ Release APK v1.0.0 built + GitHub Release
 - ☐ Test pass on Samsung A35 (owner to sideload)
-- ☐ Release APK on GitHub Releases; short plain-English user guide (1 page, in-app + PDF)
+- ☐ v1.1: short plain-English user guide
