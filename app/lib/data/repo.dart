@@ -197,12 +197,16 @@ class Repo {
   }
 
   /// Disburses a new loan. [loanDate] may be in the past (catch-up).
+  /// Not allowed during the collection phase (owner, 2026-07-06).
   Future<String> takeLoan({
     required Cycle cycle,
     required Member member,
     required int principalCents,
     required DateTime loanDate,
   }) async {
+    if (cycle.status != 'active') {
+      throw StateError('No new loans during the collection phase');
+    }
     final l = domain.Loan(
       id: _uuid.v4(),
       memberId: member.id,
@@ -254,8 +258,16 @@ class Repo {
 
   /// Loans past their due Saturday (rollover-eligible) that are still active.
   /// Feeds the SPEC 3.6 prompt — the app never rolls these silently.
+  ///
+  /// During the collection phase debts are FROZEN (owner, 2026-07-06): no
+  /// new 20% is added even when a due date passes. A rollover only exists if
+  /// its effective Sunday fell on/before the contribution end date (i.e. it
+  /// happened while the cycle was still active — catch-up entry).
   Future<List<Loan>> overdueLoans(String cycleId, {DateTime? asOf}) async {
-    final now = asOf ?? today();
+    final cycle = await (db.select(db.cycles)
+          ..where((c) => c.id.equals(cycleId)))
+        .getSingle();
+    final now = _rolloverCutoff(cycle, asOf ?? today());
     final rows = await (db.select(db.loans)
           ..where((l) => l.cycleId.equals(cycleId) & l.status.equals('active')))
         .get();
@@ -265,6 +277,16 @@ class Repo {
     ];
   }
 
+  /// The date up to which rollovers can occur. While active: today. While
+  /// collecting: the contribution end date (interest frozen afterwards).
+  DateTime _rolloverCutoff(Cycle cycle, DateTime asOf) {
+    if (cycle.status == 'collecting' && cycle.endDate != null) {
+      final end = fromIso(cycle.endDate!);
+      return end.isBefore(asOf) ? end : asOf;
+    }
+    return asOf;
+  }
+
   /// Confirms a rollover (SPEC 3.4/3.6). The new loan's date is the historical
   /// Sunday after the parent's due Saturday, regardless of confirmation time.
   Future<String> confirmRollover(Cycle cycle, Loan loan,
@@ -272,7 +294,7 @@ class Repo {
     final result = domain.rollover(
       toDomain(loan),
       await _paymentsOfLoan(loan.id),
-      asOf ?? today(),
+      _rolloverCutoff(cycle, asOf ?? today()),
       newLoanId: _uuid.v4(),
       interestPercent: cycle.interestPct,
     );

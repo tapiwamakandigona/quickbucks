@@ -169,10 +169,16 @@ enter everything that already happened and then continue live. Therefore:
 - Partial weekly contributions: **not needed** — tick = paid in full (owner confirmed 2026-07-06).
 - Mid-cycle member joins: **not needed** — roster changes at new cycle only (owner confirmed 2026-07-06).
 
-## 11. Open questions (awaiting owner)
+## 11. Collection phase rules (owner confirmed 2026-07-06)
 
-- During the **collection phase**, do overdue loans still roll over with a fresh
-  20% (current implementation: **yes**, rules unchanged), or is interest frozen
-  after the end date?
-- Is the normal share-out done only once everyone has fully paid (pot = pure
-  cash), or sometimes earlier with debts deducted from shares? (Both supported.)
+- **No new loans** during the collection phase.
+- **Debts are frozen**: once contributions end, what a member owes never grows —
+  no new 20% is added even when a due date passes. Payments keep reducing it.
+- Consequently a rollover only exists if its effective Sunday fell **on/before
+  the contribution end date** (it happened while the cycle was active; entered
+  via catch-up if recorded late).
+- There is a **share date**: the treasurer presses "Share out" when it arrives;
+  remaining debt is deducted from that member's share, negative balance shown
+  if the share doesn't cover it (§5).
+- Backdated recording of any transaction is allowed throughout (she may record
+  days later).

@@ -181,4 +181,73 @@ void main() {
         loan: loan, amountCents: 12000, paidOn: domain.day(2026, 7, 2));
     expect((await repo.loansOf(cycle.id)).single.status, 'paid');
   });
+
+  group('collection phase (owner rules 2026-07-06)', () {
+    test('no new loans; debts frozen; historical rollovers still offered',
+        () async {
+      final (cycle, members) = await makeCycle();
+      final mary = members.firstWhere((m) => m.name == 'Mary');
+
+      // Loan due Sat 2026-06-13 (taken 2026-05-08: day30 = Sun 6/7 -> Sat 6/13).
+      await repo.takeLoan(
+          cycle: cycle,
+          member: mary,
+          principalCents: 10000,
+          loanDate: domain.day(2026, 5, 8));
+      // Loan due after the end date: taken 2026-06-01, day30 = Wed 7/1 -> Sat 7/4.
+      await repo.takeLoan(
+          cycle: cycle,
+          member: mary,
+          principalCents: 5000,
+          loanDate: domain.day(2026, 6, 1));
+
+      // Contributions end Sat 2026-06-20 -> collection phase.
+      await repo.endContributions(cycle, asOf: domain.day(2026, 6, 20));
+      final collecting = (await repo.activeCycle())!;
+      expect(collecting.status, 'collecting');
+
+      // No new loans now.
+      expect(
+        () => repo.takeLoan(
+            cycle: collecting,
+            member: mary,
+            principalCents: 1000,
+            loanDate: domain.day(2026, 6, 25)),
+        throwsStateError,
+      );
+
+      // Even far in the future, only the loan whose rollover Sunday
+      // (2026-06-14) fell before the end date is offered; the one due
+      // 2026-07-04 is frozen — no new 20%.
+      final overdue = await repo.overdueLoans(collecting.id,
+          asOf: domain.day(2026, 9, 1));
+      expect(overdue.length, 1);
+      expect(overdue.single.dueDate, '2026-06-13');
+
+      // Its rollover uses the historical Sunday, as during the active phase.
+      final newId = await repo.confirmRollover(collecting, overdue.single,
+          asOf: domain.day(2026, 9, 1));
+      final child = (await repo.loansOf(collecting.id))
+          .firstWhere((l) => l.id == newId);
+      expect(child.loanDate, '2026-06-14');
+
+      // The frozen loan's owed amount never changes; payments reduce it.
+      final frozen = (await repo.loansOf(collecting.id))
+          .firstWhere((l) => l.dueDate == '2026-07-04');
+      expect(frozen.owedCents, 6000); // $50 + 20%, fixed
+      await repo.recordPayment(
+          loan: frozen, amountCents: 2000, paidOn: domain.day(2026, 8, 15));
+      expect(await repo.outstandingOf(frozen), 4000);
+
+      // Share-out still settles remaining debts against shares.
+      final so = await repo.endCycle(collecting, asOf: domain.day(2026, 9, 5));
+      expect(so.cashCents, isNotNull);
+    });
+
+    test('editable start date', () async {
+      final (cycle, _) = await makeCycle();
+      await repo.editStartDate(cycle.id, domain.day(2026, 2, 7));
+      expect((await repo.activeCycle())!.startDate, '2026-02-07');
+    });
+  });
 }

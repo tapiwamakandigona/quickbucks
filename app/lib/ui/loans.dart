@@ -21,13 +21,17 @@ class LoansScreen extends StatelessWidget {
     final closed =
         app.loans.where((l) => l.status != 'active').toList();
 
+    final collecting = app.cycle!.status == 'collecting';
     return Scaffold(
       appBar: AppBar(title: const Text('Loans')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _takeLoan(context),
-        icon: const Icon(Icons.add),
-        label: const Text('New loan'),
-      ),
+      // No new loans during the collection phase (owner, 2026-07-06).
+      floatingActionButton: collecting
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _takeLoan(context),
+              icon: const Icon(Icons.add),
+              label: const Text('New loan'),
+            ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 96, top: 8),
         children: [
