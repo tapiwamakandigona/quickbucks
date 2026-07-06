@@ -6,9 +6,12 @@ library;
 ///
 /// Used for the flat 20% loan interest: `owedFor(principal)` below.
 int percentOfHalfUp(int cents, int percent) {
-  if (cents < 0) throw ArgumentError.value(cents, 'cents', 'must be >= 0');
-  if (percent < 0)
+  if (cents < 0) {
+    throw ArgumentError.value(cents, 'cents', 'must be >= 0');
+  }
+  if (percent < 0) {
     throw ArgumentError.value(percent, 'percent', 'must be >= 0');
+  }
   // (cents * percent) / 100, rounded half-up — pure integer math.
   return (cents * percent + 50) ~/ 100;
 }
