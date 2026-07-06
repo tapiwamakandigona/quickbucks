@@ -86,13 +86,18 @@ class LoansScreen extends StatelessWidget {
     );
     if (!ok || !context.mounted) return;
     try {
-      await app.repo.takeLoan(
+      final loanId = await app.repo.takeLoan(
           cycle: app.cycle!,
           member: member,
           principalCents: cents,
           loanDate: date);
       await app.refresh();
-      if (context.mounted) showNote(context, 'Loan recorded ✓');
+      if (context.mounted) {
+        showUndoNote(context, 'Loan recorded ✓', () async {
+          await app.repo.deleteLoan(loanId);
+          await app.refresh();
+        });
+      }
     } catch (e) {
       if (context.mounted) showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
     }
@@ -302,10 +307,15 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
   );
   if (!ok || !context.mounted) return;
   try {
-    await app.repo
+    final paymentId = await app.repo
         .recordPayment(loan: loan, amountCents: cents, paidOn: date);
     await app.refresh();
-    if (context.mounted) showNote(context, 'Payment recorded ✓');
+    if (context.mounted) {
+      showUndoNote(context, 'Payment recorded ✓', () async {
+        await app.repo.deletePayment(paymentId);
+        await app.refresh();
+      });
+    }
   } catch (e) {
     if (context.mounted) showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
   }

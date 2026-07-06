@@ -51,3 +51,12 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Release APK v1.0.0 built + GitHub Release
 - ☐ Test pass on Samsung A35 (owner to sideload)
 - ☐ v1.1: short plain-English user guide
+
+## v1.1 (owner-approved 2026-07-06) — SHIPPED
+- ☑ Member detail screen + shareable per-member statement PDF
+- ☑ Undo snackbars (ticks, loans, payments) with rollover-safe guards
+- ☑ WhatsApp share-out summary message
+- ☑ Split-per-abi APKs (57.8MB → 22MB arm64)
+- ☑ Sentry crash reporting (gated on --dart-define=SENTRY_DSN; owner to provide DSN)
+- ☑ Inline error text inside bottom sheets (was hidden behind sheet)
+- ☐ Appwrite cloud backup (v1.2)

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'member_detail.dart';
 import 'contributions.dart';
 import 'cycle_end.dart';
 import 'loans.dart';
@@ -159,6 +160,14 @@ class HomeScreen extends StatelessWidget {
               title: Text(m.name),
               subtitle: Text(
                   '×${m.multiplier} — pays ${money(m.multiplier * app.cycle!.weeklyUnitCents)} each Saturday'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => MemberDetailScreen(member: m)));
+              },
             ),
         ],
       ),

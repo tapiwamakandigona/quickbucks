@@ -1,6 +1,7 @@
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'data/db.dart';
 import 'data/pin.dart' as pin;
@@ -11,12 +12,29 @@ import 'ui/create_cycle.dart';
 import 'ui/home.dart';
 import 'ui/lock.dart';
 
+/// Crash reporting is enabled only when a DSN is baked in at build time:
+/// `flutter build apk --dart-define=SENTRY_DSN=https://...`.
+/// No DSN -> no network calls at all (the ledger itself never leaves the
+/// phone either way; Sentry only receives crash stack traces).
+const _sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final db = AppDb(driftDatabase(name: 'quickbucks'));
   final state = AppState(Repo(db));
   state.refresh();
-  runApp(QuickBucksApp(state: state));
+  if (_sentryDsn.isEmpty) {
+    runApp(QuickBucksApp(state: state));
+    return;
+  }
+  SentryFlutter.init(
+    (options) {
+      options.dsn = _sentryDsn;
+      options.tracesSampleRate = 0; // crashes only, no performance tracing
+      options.sendDefaultPii = false;
+    },
+    appRunner: () => runApp(QuickBucksApp(state: state)),
+  );
 }
 
 class QuickBucksApp extends StatelessWidget {

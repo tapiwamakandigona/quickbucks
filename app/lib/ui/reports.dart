@@ -283,3 +283,133 @@ pw.Widget _stat(String label, String value) => pw.Expanded(
             ]),
       ),
     );
+
+/// One member's statement PDF — small enough to share on WhatsApp and show
+/// at the market. Owner request (v1.1 feature 1).
+Future<void> exportMemberPdf(BuildContext context, Member member) async {
+  final app = context.read<AppState>();
+  final repo = app.repo;
+  final cycle = app.cycle!;
+  try {
+    final saturdays = app.saturdaysSoFar();
+    final weekly = member.multiplier * cycle.weeklyUnitCents;
+    final paid = [
+      for (final s in saturdays)
+        if (app.isTicked(member.id, s)) s
+    ];
+    final missed = [
+      for (final s in saturdays)
+        if (!app.isTicked(member.id, s)) s
+    ];
+    final loans = app.loans.where((l) => l.memberId == member.id).toList();
+    final paymentsByLoan = <String, List<LoanPayment>>{
+      for (final l in loans) l.id: await repo.paymentRowsOf(l.id)
+    };
+    final owed = loans
+        .where((l) => l.status == 'active')
+        .fold(0, (s, l) => s + (app.outstandingByLoan[l.id] ?? 0));
+
+    final doc = pw.Document();
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      build: (ctx) => [
+        pw.Container(
+          padding: const pw.EdgeInsets.all(14),
+          decoration: pw.BoxDecoration(
+              color: _green, borderRadius: pw.BorderRadius.circular(8)),
+          child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('${member.name} — statement',
+                    style: pw.TextStyle(
+                        color: PdfColors.white,
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold)),
+                pw.Text('${cycle.name} · ${prettyDate(today())}',
+                    style: const pw.TextStyle(
+                        color: PdfColors.white, fontSize: 10)),
+              ]),
+        ),
+        pw.SizedBox(height: 12),
+        pw.Row(children: [
+          _stat('Saved so far', money(paid.length * weekly)),
+          pw.SizedBox(width: 8),
+          _stat('Multiplier', '×${member.multiplier} (${money(weekly)}/week)'),
+          pw.SizedBox(width: 8),
+          _stat('Still owes', money(owed)),
+        ]),
+        pw.SizedBox(height: 14),
+        pw.Text('Weekly payments',
+            style: pw.TextStyle(
+                fontSize: 13, fontWeight: pw.FontWeight.bold, color: _green)),
+        pw.SizedBox(height: 4),
+        pw.Text(
+            'Paid ${paid.length} of ${saturdays.length} Saturdays'
+            '${missed.isEmpty ? ' — none missed.' : '. Missing: ${missed.map(prettyDate).join(', ')}'}',
+            style: const pw.TextStyle(fontSize: 10)),
+        pw.SizedBox(height: 6),
+        pw.Wrap(spacing: 3, runSpacing: 3, children: [
+          for (final s in saturdays)
+            pw.Container(
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+              decoration: pw.BoxDecoration(
+                  color: app.isTicked(member.id, s)
+                      ? PdfColor.fromInt(0xFFDFF0E2)
+                      : PdfColor.fromInt(0xFFF8E3E1),
+                  borderRadius: pw.BorderRadius.circular(3)),
+              child: pw.Text(
+                  '${s.day}/${s.month} ${app.isTicked(member.id, s) ? '✓' : '✗'}',
+                  style: const pw.TextStyle(fontSize: 8)),
+            ),
+        ]),
+        if (loans.isNotEmpty) ...[
+          pw.SizedBox(height: 14),
+          pw.Text('Loans',
+              style: pw.TextStyle(
+                  fontSize: 13,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _green)),
+          pw.SizedBox(height: 4),
+          pw.TableHelper.fromTextArray(
+            headerStyle: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: _green),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            headers: ['Taken', 'Amount', 'Owed (20%)', 'Due', 'Paid', 'Status'],
+            data: [
+              for (final l in loans)
+                [
+                  prettyDate(fromIso(l.loanDate)),
+                  money(l.principalCents),
+                  money(l.owedCents),
+                  prettyDate(fromIso(l.dueDate)),
+                  money((paymentsByLoan[l.id] ?? [])
+                      .fold(0, (s, p) => s + p.amountCents)),
+                  l.status == 'active'
+                      ? '${money(app.outstandingByLoan[l.id] ?? 0)} left'
+                      : l.status == 'paid'
+                          ? 'Paid off'
+                          : 'Rolled over',
+                ],
+            ],
+          ),
+        ],
+        pw.SizedBox(height: 16),
+        pw.Text('Made with QuickBucks',
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+      ],
+    ));
+    await Printing.sharePdf(
+        bytes: await doc.save(),
+        filename: '${member.name} statement ${iso(today())}.pdf'
+            .replaceAll('/', '-'));
+  } catch (e) {
+    if (context.mounted) {
+      showNote(context, 'Could not make the PDF: ${friendlyError(e)}',
+          error: true);
+    }
+  }
+}

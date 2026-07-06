@@ -227,7 +227,8 @@ class Repo {
   }
 
   /// Records a payment; closes the loan automatically when fully paid.
-  Future<void> recordPayment({
+  /// Returns the payment id (used by Undo).
+  Future<String> recordPayment({
     required Loan loan,
     required int amountCents,
     required DateTime paidOn,
@@ -235,9 +236,10 @@ class Repo {
     final dLoan = toDomain(loan);
     final existing = await _paymentsOfLoan(loan.id);
     domain.validatePayment(dLoan, existing, amountCents);
+    final paymentId = _uuid.v4();
     await db.transaction(() async {
       await db.into(db.loanPayments).insert(LoanPaymentsCompanion.insert(
-            id: _uuid.v4(),
+            id: paymentId,
             loanId: loan.id,
             amountCents: amountCents,
             paidOn: iso(paidOn),
@@ -251,7 +253,60 @@ class Repo {
                 status: const Value('paid'), closedOn: Value(iso(paidOn))));
       }
     });
+    return paymentId;
   }
+
+  /// Undo a just-recorded payment. Reopens the loan if that payment had
+  /// closed it. Refuses if the loan has since been rolled over.
+  Future<void> deletePayment(String paymentId) async {
+    final payment = await (db.select(db.loanPayments)
+          ..where((p) => p.id.equals(paymentId)))
+        .getSingleOrNull();
+    if (payment == null) throw StateError('That payment no longer exists');
+    final loan = await (db.select(db.loans)
+          ..where((l) => l.id.equals(payment.loanId)))
+        .getSingle();
+    if (loan.status == 'rolled_over') {
+      throw StateError('This loan was rolled over — undo is no longer possible');
+    }
+    await db.transaction(() async {
+      await (db.delete(db.loanPayments)..where((p) => p.id.equals(paymentId)))
+          .go();
+      if (loan.status == 'paid') {
+        await (db.update(db.loans)..where((l) => l.id.equals(loan.id))).write(
+            const LoansCompanion(
+                status: Value('active'), closedOn: Value(null)));
+      }
+    });
+  }
+
+  /// Undo a just-created loan. Only possible while it has no payments and
+  /// was not created by a rollover.
+  Future<void> deleteLoan(String loanId) async {
+    final loan = await (db.select(db.loans)..where((l) => l.id.equals(loanId)))
+        .getSingle();
+    if (loan.parentLoanId != null) {
+      throw StateError('This loan came from a rollover and cannot be undone');
+    }
+    final payments = await _paymentsOfLoan(loan.id);
+    if (payments.isNotEmpty) {
+      throw StateError('This loan already has payments recorded');
+    }
+    final child = await (db.select(db.loans)
+          ..where((l) => l.parentLoanId.equals(loan.id)))
+        .get();
+    if (child.isNotEmpty) {
+      throw StateError('This loan was rolled over and cannot be undone');
+    }
+    await (db.delete(db.loans)..where((l) => l.id.equals(loan.id))).go();
+  }
+
+  /// Raw payment rows of a loan, oldest first (member statements).
+  Future<List<LoanPayment>> paymentRowsOf(String loanId) =>
+      (db.select(db.loanPayments)
+            ..where((p) => p.loanId.equals(loanId))
+            ..orderBy([(p) => OrderingTerm.asc(p.paidOn)]))
+          .get();
 
   Future<int> outstandingOf(Loan loan) async =>
       domain.outstanding(toDomain(loan), await _paymentsOfLoan(loan.id));

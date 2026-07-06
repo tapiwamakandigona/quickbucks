@@ -78,6 +78,13 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                               cycle: app.cycle!,
                               member: m,
                               saturday: selected);
+                          if (context.mounted) {
+                            showUndoNote(context, '${m.name} ticked ✓',
+                                () async {
+                              await repo.untickContribution(m.id, selected);
+                              await app.refresh();
+                            });
+                          }
                         } else {
                           final ok = await confirmAction(context,
                               title: 'Remove this payment?',

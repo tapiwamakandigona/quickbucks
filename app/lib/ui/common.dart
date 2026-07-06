@@ -65,6 +65,29 @@ Future<bool> confirmAction(BuildContext context,
   return ok ?? false;
 }
 
+/// Success snackbar with a 6-second Undo button (fat-finger insurance).
+void showUndoNote(
+    BuildContext context, String msg, Future<void> Function() onUndo) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg),
+    duration: const Duration(seconds: 6),
+    action: SnackBarAction(
+      label: 'Undo',
+      onPressed: () async {
+        try {
+          await onUndo();
+          if (context.mounted) showNote(context, 'Undone — nothing saved');
+        } catch (e) {
+          if (context.mounted) {
+            showNote(context, 'Could not undo: ${friendlyError(e)}',
+                error: true);
+          }
+        }
+      },
+    ),
+  ));
+}
+
 void showNote(BuildContext context, String msg, {bool error = false}) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(msg),

@@ -23,6 +23,7 @@ import 'package:quickbucks/ui/cycle_end.dart';
 import 'package:quickbucks/ui/home.dart';
 import 'package:quickbucks/ui/loans.dart';
 import 'package:quickbucks/ui/lock.dart';
+import 'package:quickbucks/ui/member_detail.dart';
 import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
 import 'package:sqlite3/open.dart';
 
@@ -141,6 +142,9 @@ void main() {
     await _shot(tester, state, const CreateCycleScreen(), 'create_cycle');
     await _shot(tester, state,
         LockScreen(onUnlocked: () {}), 'lock');
+    final mary = state.members.firstWhere((m) => m.name == 'Mary');
+    await _shot(tester, state, MemberDetailScreen(member: mary),
+        'member_detail');
     await state.repo.db.close();
   });
 }

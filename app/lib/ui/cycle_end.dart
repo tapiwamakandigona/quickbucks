@@ -263,6 +263,28 @@ Future<void> _restore(BuildContext context) async {
   }
 }
 
+/// Plain-text share-out summary, ready for the group's WhatsApp chat.
+String _shareOutText(Cycle cycle, ShareOut shareOut, List<ShareOutLine> lines,
+    String Function(String) nameOf) {
+  final b = StringBuffer()
+    ..writeln('🎉 ${cycle.name} — share-out')
+    ..writeln('Pot: ${money(shareOut.potCents)}')
+    ..writeln('');
+  for (final l in lines) {
+    b.write('${nameOf(l.memberId)} (×${l.multiplier}): '
+        '${money(l.shareCents)}');
+    if (l.debtDeductedCents > 0) {
+      b.write(' − ${money(l.debtDeductedCents)} owed');
+    }
+    b.writeln(' → ${money(l.payoutCents)}');
+  }
+  b
+    ..writeln('')
+    ..writeln('Cash paid out: ${money(shareOut.cashCents)}')
+    ..writeln('Made with QuickBucks');
+  return b.toString();
+}
+
 /// The final balance sheet of a finished cycle.
 class ShareOutSheetScreen extends StatelessWidget {
   final Cycle cycle;
@@ -331,8 +353,17 @@ class ShareOutSheetScreen extends StatelessWidget {
                   ),
                 ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: FilledButton.icon(
+                  onPressed: () => Share.share(_shareOutText(
+                      cycle, shareOut, lines, nameOf)),
+                  icon: const Icon(Icons.chat),
+                  label: const Text('Send as message (WhatsApp)'),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: OutlinedButton.icon(
                   onPressed: () => exportCyclePdf(context, cycle),
                   icon: const Icon(Icons.picture_as_pdf),
                   label: const Text('Export PDF record'),
