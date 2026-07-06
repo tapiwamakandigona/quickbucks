@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  domain:
+    name: Domain engine — analyze, format, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/quickbucks_domain
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: dart analyze --fatal-infos
+      - run: dart test

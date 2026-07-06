@@ -6,12 +6,13 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 - ☑ Requirements gathered & confirmed with owner (Slack DM, 2026-07-06)
 - ☑ SPEC / ARCHITECTURE / DATA_MODEL written
 
-## M1 — Domain engine (the money math) ☐
-The most important milestone. Pure Dart, zero UI.
-- ☐ `money.dart`, `dates.dart`, `loan_engine.dart`, `shareout.dart`, `ledger.dart`
-- ☐ Exhaustive unit tests for every SPEC rule, incl. the confirmed worked example
+## M1 — Domain engine (the money math) ☑
+The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain/`.
+- ☑ `money.dart`, `dates.dart`, `loan_engine.dart`, `shareout.dart`, `ledger.dart`
+- ☑ Unit tests for every SPEC rule (42 tests), incl. the confirmed worked example
   (Mary, $100, 2026-07-01) reproduced verbatim as a test
-- ☐ Property test: Σ payouts == cash_on_hand for random scenarios
+- ☑ Property test: Σ payouts == cash_on_hand for 2000 random scenarios
+- ☑ GitHub Actions CI: format + analyze + test on every push/PR
 
 ## M2 — App scaffold + storage ☐
 - ☐ Flutter project in `app/`, Material 3 theme (green/gold, large type)
@@ -22,6 +23,7 @@ The most important milestone. Pure Dart, zero UI.
 - ☐ Saturday contribution grid with manual ticks + backfill
 - ☐ Loans: take loan, record payment, loan detail with chain history
 - ☐ Overdue → rollover prompt flow (SPEC 3.6)
+- ☐ Catch-up support (SPEC §7): past start date, backdated loans/payments, historical rollover walk-through
 - ☐ Home dashboard: cash on hand, pool value, due soon, this Saturday's ticks
 
 ## M4 — Cycle end ☐

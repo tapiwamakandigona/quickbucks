@@ -126,14 +126,30 @@ payout_i = share_i − outstanding_i               (may be NEGATIVE)
   3. Loan register (every loan: principal, owed, dates, payments, rollover chain)
   4. Share-out balance sheet (share, debts deducted, final payout, negatives clearly marked)
 
-## 7. Users & platform
+## 7. Catch-up (historical records)
+
+The group's **current cycle started Sat 2026-02-01 and ends Sat 2026-07-26**
+(owner, 2026-07-06). The treasurer must be able to enter everything that already
+happened and then continue live. Therefore:
+
+- A cycle may be created with a **start date in the past**.
+- **All record types accept past dates**: contributions (backfill the Saturday
+  grid), loans (past `loan_date`), and payments (past `paid_on`).
+- For a backdated loan whose due Saturday already passed, the rollover prompt
+  (3.6) walks the chain forward chronologically: for each elapsed due date she
+  records what actually happened (payments on/before the due Saturday, or
+  confirms the rollover). Rollover effective dates remain the historical Sundays.
+- Once caught up, the app behaves identically for live use — catch-up is just
+  ordinary data entry with past dates, not a separate storage mode.
+
+## 8. Users & platform
 
 - **Single user:** the treasurer (owner's mother), Samsung Galaxy A35, Android.
 - Distributed as an **APK** (like the owner's lanlink app).
 - The app name is **QuickBucks** — the owner asked to "make it nice for her":
   friendly, large touch targets, plain English, no jargon.
 
-## 8. Out of scope (explicitly)
+## 9. Out of scope (explicitly)
 
 - Fines/penalties for missed contributions (nobody misses).
 - Loan caps.
@@ -141,7 +157,7 @@ payout_i = share_i − outstanding_i               (may be NEGATIVE)
 - Multi-currency (USD only).
 - Member logins / multi-user access.
 
-## 9. Open questions (ask the owner before implementing)
+## 10. Resolved questions
 
-- Partial weekly contributions: assumed **not needed** (tick = paid in full).
-- Mid-cycle member joins: assumed **not needed** (roster changes at new cycle only).
+- Partial weekly contributions: **not needed** — tick = paid in full (owner confirmed 2026-07-06).
+- Mid-cycle member joins: **not needed** — roster changes at new cycle only (owner confirmed 2026-07-06).

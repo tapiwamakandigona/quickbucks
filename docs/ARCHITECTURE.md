@@ -24,10 +24,12 @@
 
 ## Domain layer (the part that must be perfect)
 
-Pure Dart, no Flutter imports, 100% unit-tested:
+Pure Dart, no Flutter imports, 100% unit-tested. Lives as a standalone package at
+`packages/quickbucks_domain/` (the Flutter app depends on it by path), so the money
+math can be developed and tested with the plain Dart SDK and never entangles UI:
 
 ```
-app/lib/domain/
+packages/quickbucks_domain/lib/src/
 ├── money.dart          # cents type, round_half_up, formatting ($1,234.50)
 ├── dates.dart          # Saturday math: dueDateFor(loanDate), next/prevSaturday, saturdaysBetween
 ├── loan_engine.dart    # owed = 1.2×P, repayment application, rollover generation (Sunday rule)
