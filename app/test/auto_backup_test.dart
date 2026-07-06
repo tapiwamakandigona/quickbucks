@@ -1,5 +1,7 @@
 /// Auto-backup safety net: writes daily snapshots, prunes old ones, and a
 /// snapshot restores the exact ledger.
+library;
+
 import 'dart:ffi';
 import 'dart:io';
 

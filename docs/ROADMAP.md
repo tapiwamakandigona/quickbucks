@@ -74,3 +74,8 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Auto-backup: daily snapshot to app storage after every change (keeps 7), "Automatic backups" restore list in settings
 - ☑ Auto-lock: PIN asked again after 30s outside the app
 - ☑ PDFs: bundled DejaVu font (built-in Helvetica cannot print ✓/—), human dates, one page per category; permanent render harness (test/pdf_render_test.dart)
+
+## v1.2.1 (2026-07-06) — owner feedback round
+- ☑ Ledger PDF grid: missed weeks show a red ✗ (was a grey dash); legend updated
+- ☑ "Mark everyone paid" catch-up button on the Saturday book (fills every missing tick start→today, skips existing, confirm + undo; test/tick_all_test.dart)
+- ☑ Snackbars: replace instead of queueing, success 2s / undo 3s / errors 4s (owner: notes stayed too long)

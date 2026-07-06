@@ -163,7 +163,7 @@ pw.Document buildCycleLedgerDoc({
 
   // ── Page 2: the Saturday book ──────────────────────────────────────
   addSection([
-    header('Weekly payments (✓ = paid)'),
+    header('Weekly payments (✓ = paid, ✗ = missed)'),
     if (saturdays.isEmpty)
       pw.Text('No weekly payments recorded.',
           style: const pw.TextStyle(fontSize: 10))
@@ -174,8 +174,13 @@ pw.Document buildCycleLedgerDoc({
           for (final s in saturdays)
             [
               shortDate(fromIso(s)),
-              ...members.map((m) =>
-                  ticked.containsKey('${m.id}|$s') ? '✓' : '—'),
+              ...members.map((m) => ticked.containsKey('${m.id}|$s')
+                  ? '✓'
+                  : pw.Text('✗',
+                      style: pw.TextStyle(
+                          fontSize: 9,
+                          color: _red,
+                          fontWeight: pw.FontWeight.bold))),
             ]
         ],
         headerStyle: pw.TextStyle(

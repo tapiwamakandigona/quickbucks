@@ -155,6 +155,31 @@ class Repo {
         ));
   }
 
+  /// Catch-up helper: tick every member for every Saturday in [saturdays]
+  /// that is not already ticked. Returns the (memberId, saturday) pairs it
+  /// added so the caller can offer undo. One transaction — all or nothing.
+  Future<List<(String, DateTime)>> tickAllMissing({
+    required Cycle cycle,
+    required List<Member> members,
+    required List<DateTime> saturdays,
+  }) async {
+    final existing = {
+      for (final c in await contributionsOf(cycle.id))
+        '${c.memberId}|${c.saturday}'
+    };
+    final added = <(String, DateTime)>[];
+    await db.transaction(() async {
+      for (final m in members) {
+        for (final s in saturdays) {
+          if (existing.contains('${m.id}|${iso(s)}')) continue;
+          await tickContribution(cycle: cycle, member: m, saturday: s);
+          added.add((m.id, s));
+        }
+      }
+    });
+    return added;
+  }
+
   Future<void> untickContribution(String memberId, DateTime saturday) async {
     await (db.delete(db.contributions)
           ..where((c) =>

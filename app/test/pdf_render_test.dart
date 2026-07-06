@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quickbucks/data/db.dart';
 import 'package:quickbucks/data/repo.dart' show iso;
 import 'package:quickbucks/ui/reports.dart';
+import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
 import 'package:sqlite3/open.dart';
 
 import 'support/seed.dart';
@@ -39,6 +40,12 @@ void main() {
 
     // ── Full ledger (same data gathering as exportCyclePdf) ──
     final members = await repo.membersOf(cycle.id);
+    // Two missed weeks so the red ✗ marks are visible in the review PDF.
+    // (Re-ticked below so the totals used by the other documents stay put.)
+    final joyce = members.firstWhere((m) => m.name == 'Joyce');
+    final naomi = members.firstWhere((m) => m.name == 'Naomi');
+    await repo.untickContribution(joyce.id, domain.day(2026, 3, 14));
+    await repo.untickContribution(naomi.id, domain.day(2026, 5, 2));
     final contributions = await repo.contributionsOf(cycle.id);
     final loans = await repo.loansOf(cycle.id);
     final outstandingByLoan = <String, int>{

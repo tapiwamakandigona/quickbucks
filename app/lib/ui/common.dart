@@ -70,12 +70,18 @@ Future<bool> confirmAction(BuildContext context,
   return ok ?? false;
 }
 
-/// Success snackbar with a 6-second Undo button (fat-finger insurance).
+/// Success snackbar with an Undo button (fat-finger insurance).
+///
+/// Notes REPLACE each other instead of queueing — ticking ten members fast
+/// used to stack ten 6-second notes (owner feedback 2026-07-06: "stays on
+/// a bit too long, kinda gets annoying").
 void showUndoNote(
     BuildContext context, String msg, Future<void> Function() onUndo) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(
     content: Text(msg),
-    duration: const Duration(seconds: 6),
+    duration: const Duration(seconds: 3),
     action: SnackBarAction(
       label: 'Undo',
       onPressed: () async {
@@ -93,11 +99,15 @@ void showUndoNote(
   ));
 }
 
+/// Quick note. Errors stay 4 s (needs reading); success flashes 2 s.
 void showNote(BuildContext context, String msg, {bool error = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(msg),
-    backgroundColor: error ? kDanger : null,
-  ));
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(
+      content: Text(msg),
+      duration: Duration(seconds: error ? 4 : 2),
+      backgroundColor: error ? kDanger : null,
+    ));
 }
 
 class BigStat extends StatelessWidget {

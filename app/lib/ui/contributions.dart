@@ -31,7 +31,13 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
     final selected = _selected ?? saturdays.first;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Weekly payments')),
+      appBar: AppBar(title: const Text('Weekly payments'), actions: [
+        IconButton(
+          icon: const Icon(Icons.done_all),
+          tooltip: 'Mark everyone paid',
+          onPressed: () => _tickEveryone(context, app, saturdays),
+        ),
+      ]),
       body: Column(
         children: [
           SizedBox(
@@ -113,5 +119,46 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
         ],
       ),
     );
+  }
+
+  /// "Mark everyone paid": ticks every member for every Saturday from the
+  /// start up to today, skipping what is already ticked. Undo-able.
+  Future<void> _tickEveryone(
+      BuildContext context, AppState app, List<DateTime> saturdays) async {
+    final missing = saturdays
+        .expand((s) => app.members.where((m) => !app.isTicked(m.id, s)))
+        .length;
+    if (missing == 0) {
+      showNote(context, 'Everyone is already ticked ✓');
+      return;
+    }
+    final ok = await confirmAction(
+      context,
+      title: 'Mark everyone paid?',
+      message: 'This ticks all members for every Saturday from the start '
+          'until today — $missing missing ${missing == 1 ? 'tick' : 'ticks'} '
+          'will be added. Already-ticked weeks are not touched.',
+      yes: 'Tick all $missing',
+    );
+    if (!ok || !context.mounted) return;
+    try {
+      final added = await app.repo.tickAllMissing(
+          cycle: app.cycle!,
+          members: app.members,
+          saturdays: saturdays);
+      await app.refresh();
+      if (context.mounted) {
+        showUndoNote(context, '${added.length} ticks added ✓', () async {
+          for (final (memberId, s) in added) {
+            await app.repo.untickContribution(memberId, s);
+          }
+          await app.refresh();
+        });
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
+      }
+    }
   }
 }
