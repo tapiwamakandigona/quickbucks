@@ -7,6 +7,11 @@ import '../theme.dart';
 final _dateFmt = DateFormat('EEE, d MMM yyyy');
 String prettyDate(DateTime d) => _dateFmt.format(d);
 
+final _shortFmt = DateFormat('d MMM');
+
+/// Compact date for dense tables, e.g. '7 Feb'.
+String shortDate(DateTime d) => _shortFmt.format(d);
+
 /// For use right after the word "Saturday": no repeated weekday.
 final _satFmt = DateFormat('d MMMM yyyy');
 String satDate(DateTime d) => _satFmt.format(d);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -12,6 +13,15 @@ import 'common.dart';
 const _green = PdfColor.fromInt(0xFF1B6E3C);
 const _gold = PdfColor.fromInt(0xFFC9A227);
 const _red = PdfColor.fromInt(0xFFB3261E);
+
+/// PDF theme with a bundled font that covers every glyph we print
+/// (the built-in Helvetica is latin-1 only: no tick marks or long dashes).
+Future<pw.ThemeData> pdfTheme() async {
+  final base = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans.ttf'));
+  final bold =
+      pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans-Bold.ttf'));
+  return pw.ThemeData.withFont(base: base, bold: bold);
+}
 
 /// Builds and shares the full ledger PDF for [cycle] (SPEC 6).
 Future<void> exportCyclePdf(BuildContext context, Cycle cycle) async {
@@ -34,7 +44,8 @@ Future<void> exportCyclePdf(BuildContext context, Cycle cycle) async {
     final totals = await repo.totals(cycle.id);
     final shareOut = await repo.shareOutOf(cycle.id);
 
-    final doc = _buildPdf(
+    final doc = buildCycleLedgerDoc(
+      theme: await pdfTheme(),
       cycle: cycle,
       members: members,
       contributions: contributions,
@@ -56,7 +67,8 @@ Future<void> exportCyclePdf(BuildContext context, Cycle cycle) async {
   }
 }
 
-pw.Document _buildPdf({
+pw.Document buildCycleLedgerDoc({
+  required pw.ThemeData theme,
   required Cycle cycle,
   required List<Member> members,
   required List<Contribution> contributions,
@@ -67,9 +79,9 @@ pw.Document _buildPdf({
   required int poolValue,
   required (ShareOut, List<ShareOutLine>)? shareOut,
 }) {
-  final doc = pw.Document(title: 'QuickBucks — ${cycle.name}');
+  final doc = pw.Document(title: 'QuickBucks — ${cycle.name}', theme: theme);
   String nameOf(String id) => members.firstWhere((m) => m.id == id).name;
-  String d(String isoDate) => isoDate; // dates already yyyy-MM-dd
+  String d(String isoDate) => prettyDate(fromIso(isoDate));
 
   final saturdays =
       contributions.map((c) => c.saturday).toSet().toList()..sort();
@@ -112,10 +124,10 @@ pw.Document _buildPdf({
                       color: PdfColors.white, fontSize: 14)),
             ]),
             pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-              pw.Text('${d(cycle.startDate)} → ${cycle.endDate ?? 'ongoing'}',
+              pw.Text('${d(cycle.startDate)} → ${cycle.endDate == null ? 'ongoing' : d(cycle.endDate!)}',
                   style: const pw.TextStyle(
                       color: PdfColors.white, fontSize: 11)),
-              pw.Text('Printed ${iso(today())}',
+              pw.Text('Printed ${prettyDate(today())}',
                   style: const pw.TextStyle(
                       color: PdfColors.white, fontSize: 11)),
             ]),
@@ -156,7 +168,7 @@ pw.Document _buildPdf({
           data: [
             for (final s in saturdays)
               [
-                s,
+                shortDate(fromIso(s)),
                 ...members.map((m) =>
                     ticked.containsKey('${m.id}|$s') ? '✓' : '—'),
               ]
@@ -309,99 +321,19 @@ Future<void> exportMemberPdf(BuildContext context, Member member) async {
         .where((l) => l.status == 'active')
         .fold(0, (s, l) => s + (app.outstandingByLoan[l.id] ?? 0));
 
-    final doc = pw.Document();
-    doc.addPage(pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
-      build: (ctx) => [
-        pw.Container(
-          padding: const pw.EdgeInsets.all(14),
-          decoration: pw.BoxDecoration(
-              color: _green, borderRadius: pw.BorderRadius.circular(8)),
-          child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text('${member.name} — statement',
-                    style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold)),
-                pw.Text('${cycle.name} · ${prettyDate(today())}',
-                    style: const pw.TextStyle(
-                        color: PdfColors.white, fontSize: 10)),
-              ]),
-        ),
-        pw.SizedBox(height: 12),
-        pw.Row(children: [
-          _stat('Saved so far', money(paid.length * weekly)),
-          pw.SizedBox(width: 8),
-          _stat('Multiplier', '×${member.multiplier} (${money(weekly)}/week)'),
-          pw.SizedBox(width: 8),
-          _stat('Still owes', money(owed)),
-        ]),
-        pw.SizedBox(height: 14),
-        pw.Text('Weekly payments',
-            style: pw.TextStyle(
-                fontSize: 13, fontWeight: pw.FontWeight.bold, color: _green)),
-        pw.SizedBox(height: 4),
-        pw.Text(
-            'Paid ${paid.length} of ${saturdays.length} Saturdays'
-            '${missed.isEmpty ? ' — none missed.' : '. Missing: ${missed.map(prettyDate).join(', ')}'}',
-            style: const pw.TextStyle(fontSize: 10)),
-        pw.SizedBox(height: 6),
-        pw.Wrap(spacing: 3, runSpacing: 3, children: [
-          for (final s in saturdays)
-            pw.Container(
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-              decoration: pw.BoxDecoration(
-                  color: app.isTicked(member.id, s)
-                      ? PdfColor.fromInt(0xFFDFF0E2)
-                      : PdfColor.fromInt(0xFFF8E3E1),
-                  borderRadius: pw.BorderRadius.circular(3)),
-              child: pw.Text(
-                  '${s.day}/${s.month} ${app.isTicked(member.id, s) ? '✓' : '✗'}',
-                  style: const pw.TextStyle(fontSize: 8)),
-            ),
-        ]),
-        if (loans.isNotEmpty) ...[
-          pw.SizedBox(height: 14),
-          pw.Text('Loans',
-              style: pw.TextStyle(
-                  fontSize: 13,
-                  fontWeight: pw.FontWeight.bold,
-                  color: _green)),
-          pw.SizedBox(height: 4),
-          pw.TableHelper.fromTextArray(
-            headerStyle: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white),
-            headerDecoration: const pw.BoxDecoration(color: _green),
-            cellStyle: const pw.TextStyle(fontSize: 9),
-            headers: ['Taken', 'Amount', 'Owed (20%)', 'Due', 'Paid', 'Status'],
-            data: [
-              for (final l in loans)
-                [
-                  prettyDate(fromIso(l.loanDate)),
-                  money(l.principalCents),
-                  money(l.owedCents),
-                  prettyDate(fromIso(l.dueDate)),
-                  money((paymentsByLoan[l.id] ?? [])
-                      .fold(0, (s, p) => s + p.amountCents)),
-                  l.status == 'active'
-                      ? '${money(app.outstandingByLoan[l.id] ?? 0)} left'
-                      : l.status == 'paid'
-                          ? 'Paid off'
-                          : 'Rolled over',
-                ],
-            ],
-          ),
-        ],
-        pw.SizedBox(height: 16),
-        pw.Text('Made with QuickBucks',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
-      ],
-    ));
+    final doc = buildMemberStatementDoc(
+      theme: await pdfTheme(),
+      cycle: cycle,
+      member: member,
+      saturdays: saturdays,
+      paidIso: {for (final t in paid) iso(t)},
+      missed: missed,
+      loans: loans,
+      paymentsByLoan: paymentsByLoan,
+      outstandingByLoan: app.outstandingByLoan,
+      owed: owed,
+      weekly: weekly,
+    );
     await Printing.sharePdf(
         bytes: await doc.save(),
         filename: '${member.name} statement ${iso(today())}.pdf'
@@ -412,4 +344,114 @@ Future<void> exportMemberPdf(BuildContext context, Member member) async {
           error: true);
     }
   }
+}
+
+/// Builds one member's statement document (pure; unit-testable).
+pw.Document buildMemberStatementDoc({
+  required pw.ThemeData theme,
+  required Cycle cycle,
+  required Member member,
+  required List<DateTime> saturdays,
+  required Set<String> paidIso,
+  required List<DateTime> missed,
+  required List<Loan> loans,
+  required Map<String, List<LoanPayment>> paymentsByLoan,
+  required Map<String, int> outstandingByLoan,
+  required int owed,
+  required int weekly,
+}) {
+final doc = pw.Document(theme: theme);
+  doc.addPage(pw.MultiPage(
+    pageFormat: PdfPageFormat.a4,
+    build: (ctx) => [
+      pw.Container(
+        padding: const pw.EdgeInsets.all(14),
+        decoration: pw.BoxDecoration(
+            color: _green, borderRadius: pw.BorderRadius.circular(8)),
+        child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('${member.name} — statement',
+                  style: pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold)),
+              pw.Text('${cycle.name} · ${prettyDate(today())}',
+                  style: const pw.TextStyle(
+                      color: PdfColors.white, fontSize: 10)),
+            ]),
+      ),
+      pw.SizedBox(height: 12),
+      pw.Row(children: [
+        _stat('Saved so far', money(paidIso.length * weekly)),
+        pw.SizedBox(width: 8),
+        _stat('Multiplier', '×${member.multiplier} (${money(weekly)}/week)'),
+        pw.SizedBox(width: 8),
+        _stat('Still owes', money(owed)),
+      ]),
+      pw.SizedBox(height: 14),
+      pw.Text('Weekly payments',
+          style: pw.TextStyle(
+              fontSize: 13, fontWeight: pw.FontWeight.bold, color: _green)),
+      pw.SizedBox(height: 4),
+      pw.Text(
+          'Paid ${paidIso.length} of ${saturdays.length} Saturdays'
+          '${missed.isEmpty ? ' — none missed.' : '. Missing: ${missed.map(prettyDate).join(', ')}'}',
+          style: const pw.TextStyle(fontSize: 10)),
+      pw.SizedBox(height: 6),
+      pw.Wrap(spacing: 3, runSpacing: 3, children: [
+        for (final s in saturdays)
+          pw.Container(
+            padding:
+                const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+            decoration: pw.BoxDecoration(
+                color: paidIso.contains(iso(s))
+                    ? PdfColor.fromInt(0xFFDFF0E2)
+                    : PdfColor.fromInt(0xFFF8E3E1),
+                borderRadius: pw.BorderRadius.circular(3)),
+            child: pw.Text(
+                '${s.day}/${s.month} ${paidIso.contains(iso(s)) ? '✓' : '✗'}',
+                style: const pw.TextStyle(fontSize: 8)),
+          ),
+      ]),
+      if (loans.isNotEmpty) ...[
+        pw.SizedBox(height: 14),
+        pw.Text('Loans',
+            style: pw.TextStyle(
+                fontSize: 13,
+                fontWeight: pw.FontWeight.bold,
+                color: _green)),
+        pw.SizedBox(height: 4),
+        pw.TableHelper.fromTextArray(
+          headerStyle: pw.TextStyle(
+              fontSize: 9,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white),
+          headerDecoration: const pw.BoxDecoration(color: _green),
+          cellStyle: const pw.TextStyle(fontSize: 9),
+          headers: ['Taken', 'Amount', 'Owed (20%)', 'Due', 'Paid', 'Status'],
+          data: [
+            for (final l in loans)
+              [
+                prettyDate(fromIso(l.loanDate)),
+                money(l.principalCents),
+                money(l.owedCents),
+                prettyDate(fromIso(l.dueDate)),
+                money((paymentsByLoan[l.id] ?? [])
+                    .fold(0, (s, p) => s + p.amountCents)),
+                l.status == 'active'
+                    ? '${money(outstandingByLoan[l.id] ?? 0)} left'
+                    : l.status == 'paid'
+                        ? 'Paid off'
+                        : 'Rolled over',
+              ],
+          ],
+        ),
+      ],
+      pw.SizedBox(height: 16),
+      pw.Text('Made with QuickBucks',
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+    ],
+  ));
+  return doc;
 }
