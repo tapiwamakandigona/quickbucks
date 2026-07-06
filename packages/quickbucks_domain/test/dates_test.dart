@@ -3,26 +3,45 @@ import 'package:test/test.dart';
 
 void main() {
   group('dueDateFor (SPEC 3.2 examples, verified 2026 calendar)', () {
-    test('Wed 2026-07-01 -> day30 Fri 07-31 -> due Sat 2026-08-01', () {
+    test("owner's example: Sat 2026-02-07 -> due Sat 2026-03-07 (a Saturday)",
+        () {
+      expect(dueDateFor(day(2026, 2, 7)), day(2026, 3, 7));
+    });
+    test('Wed 2026-07-01 -> Sat 08-01 IS a Saturday -> due that same day', () {
       expect(dueDateFor(day(2026, 7, 1)), day(2026, 8, 1));
     });
-    test('Sat 2026-07-04 -> day30 Mon 08-03 -> due Sat 2026-08-08', () {
+    test('Sat 2026-07-04 -> Tue 08-04 -> due Sat 2026-08-08', () {
       expect(dueDateFor(day(2026, 7, 4)), day(2026, 8, 8));
     });
-    test('Thu 2026-07-09 -> day30 IS Sat 2026-08-08 -> due that same day', () {
-      expect(dueDateFor(day(2026, 7, 9)), day(2026, 8, 8));
+    test('Thu 2026-07-09 -> Sun 08-09 -> due Sat 2026-08-15', () {
+      expect(dueDateFor(day(2026, 7, 9)), day(2026, 8, 15));
     });
-    test('Sun 2026-08-02 -> day30 Tue 09-01 -> due Sat 2026-09-05', () {
+    test('Sun 2026-08-02 -> Wed 09-02 -> due Sat 2026-09-05', () {
       expect(dueDateFor(day(2026, 8, 2)), day(2026, 9, 5));
     });
-    test('due date is always a Saturday, >= day30, < day30+7', () {
-      for (var offset = 0; offset < 400; offset++) {
+    test('clamping: Sat 2026-01-31 -> Sat 02-28 (Feb has no 31st)', () {
+      expect(sameDateNextMonth(day(2026, 1, 31)), day(2026, 2, 28));
+      expect(dueDateFor(day(2026, 1, 31)), day(2026, 2, 28));
+    });
+    test('leap year clamping: 2028-01-31 -> 2028-02-29', () {
+      expect(sameDateNextMonth(day(2028, 1, 31)), day(2028, 2, 29));
+    });
+    test('December wraps to January of the next year', () {
+      expect(sameDateNextMonth(day(2026, 12, 15)), day(2027, 1, 15));
+    });
+    test('due date is always a Saturday within a week after the month day',
+        () {
+      for (var offset = 0; offset < 800; offset++) {
         final loanDate = addDays(day(2026, 1, 1), offset);
+        final monthDay = sameDateNextMonth(loanDate);
         final due = dueDateFor(loanDate);
-        final day30 = addDays(loanDate, 30);
         expect(isSaturday(due), isTrue);
-        expect(due.isBefore(day30), isFalse);
-        expect(due.difference(day30).inDays, lessThan(7));
+        expect(due.isBefore(monthDay), isFalse);
+        expect(due.difference(monthDay).inDays, lessThan(7));
+        // never earlier than 28 days out, never later than ~38
+        final len = due.difference(loanDate).inDays;
+        expect(len, greaterThanOrEqualTo(28));
+        expect(len, lessThanOrEqualTo(38));
       }
     });
   });

@@ -79,3 +79,10 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Ledger PDF grid: missed weeks show a red ✗ (was a grey dash); legend updated
 - ☑ "Mark everyone paid" catch-up button on the Saturday book (fills every missing tick start→today, skips existing, confirm + undo; test/tick_all_test.dart)
 - ☑ Snackbars: replace instead of queueing, success 2s / undo 3s / errors 4s (owner: notes stayed too long)
+
+## v1.3.0 (2026-07-06) — loan due-date rule change (owner correction)
+- ☑ Loans now due the same calendar date next month (clamped to month end), rolled to the Saturday on/after — replaces the old loan date + 30 days rule
+- ☑ Owner's example encoded as a test: borrowed 7 Feb 2026 → base 7 Mar 2026 (a Saturday) → due 7 Mar 2026
+- ☑ Month-end clamping: 31 Jan → 28/29 Feb; leap-year and December-wrap tests; 800-day property test (due date is always a Saturday, 28–38 days out)
+- ☑ DB migration (schema v1 → v2): every stored loan's due date is recomputed with the new rule on first launch after upgrade (test/migration_test.dart)
+- ☑ 20% flat interest and rollover behaviour unchanged; SPEC 3.2 rewritten with new examples table

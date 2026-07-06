@@ -50,19 +50,29 @@ dates** (no timezones/timestamps in business logic).
 - Flat interest: borrowing principal `P` means the member owes
   **`owed = round_half_up(1.2 × P)`** (in cents).
 
-### 3.2 Due date rule
+### 3.2 Due date rule (corrected 2026-07-06)
+Loans are **month loans**, not 30-day loans (owner: "if you take on the 7th
+you pay back the 7th the following month, and if that day is not a Saturday
+it is stretched as usual to the following Saturday").
 ```
-day30 = loan_date + 30 days
-due   = day30 if day30 is a Saturday, else the next Saturday after day30
+monthDay = same calendar date in the following month
+           (clamped to the last day of that month: 31 Jan → 28/29 Feb)
+due      = monthDay if monthDay is a Saturday, else the next Saturday after it
 ```
 Examples (verified against the 2026 calendar):
 
-| Loan taken | day 30 | Due Saturday |
+| Loan taken | same date next month | Due Saturday |
 |---|---|---|
-| Wed 2026-07-01 | Fri 2026-07-31 | **Sat 2026-08-01** |
-| Sat 2026-07-04 | Mon 2026-08-03 | **Sat 2026-08-08** |
-| Thu 2026-07-09 | **Sat 2026-08-08** | **Sat 2026-08-08** (day 30 itself) |
-| Sun 2026-08-02 | Tue 2026-09-01 | **Sat 2026-09-05** |
+| Sat 2026-02-07 | Sat 2026-03-07 | **Sat 2026-03-07** (owner's example) |
+| Wed 2026-07-01 | Sat 2026-08-01 | **Sat 2026-08-01** |
+| Sat 2026-07-04 | Tue 2026-08-04 | **Sat 2026-08-08** |
+| Thu 2026-07-09 | Sun 2026-08-09 | **Sat 2026-08-15** |
+| Sat 2026-01-31 | Sat 2026-02-28 (clamped) | **Sat 2026-02-28** |
+| Sun 2026-08-02 | Wed 2026-09-02 | **Sat 2026-09-05** |
+
+> History: v1.x up to 1.2.1 used `loan_date + 30 days` rolled to Saturday.
+> The owner corrected this on 2026-07-06; v1.3.0 recomputes stored due dates
+> from `loan_date` on upgrade.
 
 ### 3.3 Repayments
 - Any amount, any date, against a specific loan (loans are separate).
@@ -88,7 +98,7 @@ Mary borrows **$100** on **Wed 2026-07-01** → owes **$120**, due **Sat 2026-08
 She pays **$50** on 2026-07-20 → owes **$70**, same due date, no new interest.
 The due Saturday passes with $70 unpaid → on **Sun 2026-08-02** a new loan is
 created: she now owes **$84** ($70 + 20%), due **Sat 2026-09-05**
-(day 30 = Tue 2026-09-01 → next Saturday).
+(same date next month = Wed 2026-09-02 → next Saturday).
 
 ### 3.6 Manual bookkeeping guard
 Because the treasurer records payments by hand, the app must **not silently roll

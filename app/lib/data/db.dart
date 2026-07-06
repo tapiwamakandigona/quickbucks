@@ -3,6 +3,7 @@
 library;
 
 import 'package:drift/drift.dart';
+import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
 
 part 'db.g.dart';
 
@@ -111,5 +112,26 @@ class AppDb extends _$AppDb {
   AppDb(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v1.3.0: the due-date rule changed from "loan_date + 30 days
+            // rolled to Saturday" to "same date next month, clamped, rolled
+            // to Saturday" (owner correction 2026-07-06, SPEC 3.2).
+            // Recompute every stored due date from its loan date.
+            String pad(int n) => n.toString().padLeft(2, '0');
+            final rows = await select(loans).get();
+            for (final l in rows) {
+              final p = l.loanDate.split('-').map(int.parse).toList();
+              final due = domain.dueDateFor(DateTime.utc(p[0], p[1], p[2]));
+              final dueIso = "${due.year}-${pad(due.month)}-${pad(due.day)}";
+              await (update(loans)..where((t) => t.id.equals(l.id)))
+                  .write(LoansCompanion(dueDate: Value(dueIso)));
+            }
+          }
+        },
+      );
 }

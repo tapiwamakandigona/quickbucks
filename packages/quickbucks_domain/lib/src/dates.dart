@@ -26,11 +26,25 @@ DateTime saturdayOnOrAfter(DateTime d) {
   return addDays(base, delta);
 }
 
-/// Loan due-date rule (SPEC 3.2):
-/// day30 = loan_date + 30 days; due = day30 if it is a Saturday, else the
-/// next Saturday after it.
+/// Same calendar date in the following month, clamped to that month's last
+/// day (31 Jan → 28/29 Feb). This is how the group counts a loan month:
+/// "if you take on the 7th you pay back on the 7th the following month".
+DateTime sameDateNextMonth(DateTime d) {
+  final base = dateOnly(d);
+  final y = base.month == 12 ? base.year + 1 : base.year;
+  final m = base.month == 12 ? 1 : base.month + 1;
+  final ctor = base.isUtc ? DateTime.utc : DateTime.new;
+  final lastDay = ctor(y, m + 1, 0).day; // day 0 of m+1 = last day of m
+  return ctor(y, m, base.day > lastDay ? lastDay : base.day);
+}
+
+/// Loan due-date rule (SPEC 3.2, corrected 2026-07-06 — owner: loans are
+/// month loans, not 30-day loans):
+/// monthDay = same date next month (clamped); due = monthDay if it is a
+/// Saturday, else the next Saturday after it.
+/// Example from the owner: borrowed Sat 7 Feb 2026 → due Sat 7 Mar 2026.
 DateTime dueDateFor(DateTime loanDate) =>
-    saturdayOnOrAfter(addDays(loanDate, 30));
+    saturdayOnOrAfter(sameDateNextMonth(loanDate));
 
 /// The Sunday immediately after the given due Saturday — the moment a loan
 /// becomes rollover-eligible (SPEC 3.4: paying ON the due Saturday is on

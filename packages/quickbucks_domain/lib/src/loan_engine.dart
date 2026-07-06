@@ -18,7 +18,7 @@ class Loan {
   final int owedCents;
   final DateTime loanDate;
 
-  /// Saturday on/after day 30 (SPEC 3.2). Derived, but carried on the value
+  /// Saturday on/after the same date next month (SPEC 3.2). Derived, but carried on the value
   /// so callers never recompute it inconsistently.
   final DateTime dueDate;
   final LoanStatus status;

@@ -39,7 +39,7 @@ packages/quickbucks_domain/lib/src/
 
 Key invariants enforced by tests (see SPEC.md for the rules):
 
-1. `dueDateFor` returns day30 itself iff it's a Saturday, else next Saturday after.
+1. `dueDateFor` = same date next month (clamped to month end), rolled to Saturday on/after.
 2. Payment on the due Saturday is on time; rollover only from the Sunday after.
 3. Rollover: new loan `principal = remainder`, `loan_date = that Sunday`, fresh 20%.
 4. `Σ payout_i == cash_on_hand` exactly, in cents, for arbitrary inputs.
