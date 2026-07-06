@@ -1,0 +1,12 @@
+# Never commit secrets
+*.env
+*.pem
+*.keystore
+key.properties
+
+# Flutter/Dart (for when app/ lands)
+**/build/
+**/.dart_tool/
+**/.flutter-plugins*
+**/*.iml
+.idea/
