@@ -14,28 +14,32 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Property test: Σ payouts == cash_on_hand for 2000 random scenarios
 - ☑ GitHub Actions CI: format + analyze + test on every push/PR
 
-## M2 — App scaffold + storage ◐
+## M2 — App scaffold + storage ☑
 - ☑ Flutter project in `app/` (Android, `com.tapiwa.quickbucks`)
 - ☑ drift schema per DATA_MODEL.md + Repo layer (all mutations via domain engine)
 - ☑ Repo integration tests (in-memory SQLite): full Mary story, share-out invariants
-- ☐ Material 3 theme (green/gold, large type)
-- ☐ Cycle creation flow (members + multipliers, start/end date)
+- ☑ Material 3 theme (green/gold, large type)
+- ☑ Cycle creation flow (members + multipliers, start/end date, past dates OK)
 
-## M3 — Daily use screens ☐
-- ☐ Saturday contribution grid with manual ticks + backfill
-- ☐ Loans: take loan, record payment, loan detail with chain history
-- ☐ Overdue → rollover prompt flow (SPEC 3.6)
-- ☐ Catch-up support (SPEC §7): past start date, backdated loans/payments, historical rollover walk-through
+## M3 — Daily use screens ◐
+- ☑ Saturday contribution grid with manual ticks + backfill
+- ☑ Loans: take loan, record payment (defaults overdue payments to the due Saturday)
+- ☑ Overdue → rollover prompt flow (SPEC 3.6) with restated numbers
+- ☑ Catch-up support (SPEC §7): past start date, backdated loans/payments
+- ☑ Home dashboard: cash on hand, pool value, due soon, this Saturday's ticks
+- ☐ On-device walkthrough / polish pass
 - ☐ Home dashboard: cash on hand, pool value, due soon, this Saturday's ticks
 
-## M4 — Cycle end ☐
-- ☐ Editable end date + "End now"
-- ☐ Share-out flow with per-member balance sheet (negatives clearly shown)
-- ☐ Archive: past cycles read-only + start-new-cycle (prefill roster)
+## M4 — Cycle end ◐
+- ☑ Editable start + end dates; two-step end (collection phase → share out)
+- ☑ Share-out flow with per-member balance sheet (negatives clearly shown)
+- ☑ Archive: past cycles read-only
+- ☐ Start-new-cycle with roster prefill from previous cycle
 
-## M5 — PDF export ☐
-- ☐ Full ledger PDF (summary, contribution grid, loan register, share-out sheet)
-- ☐ Share sheet integration; export anytime + per archived cycle
+## M5 — PDF export ◐
+- ☑ Full ledger PDF (summary, contribution grid, loan register, payment log, share-out sheet)
+- ☑ Share sheet integration; export anytime + per archived cycle
+- ☐ Verify rendering on device
 
 ## M6 — Backup & restore ☐
 - ☐ Appwrite login + snapshot upload (manual button + auto after changes when online)

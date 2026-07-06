@@ -18,13 +18,19 @@ dates** (no timezones/timestamps in business logic).
 - Members and multipliers are **locked once the cycle starts** — they cannot be
   edited mid-cycle. Roster changes (new members, members leaving, new multipliers)
   happen when **starting the next cycle**.
-- A cycle has an **end date** which is:
-  - settable when the cycle is created (optional),
-  - **editable at any time** while the cycle is active,
-  - overridable with an **"End now"** button that ends the cycle immediately and
-    triggers share-out.
+- **Both dates are editable** while the cycle is not closed (owner request
+  2026-07-06: "please let this date be editable just in case"). Members and
+  multipliers stay locked; dates are fixable.
+- Ending is **two steps** (owner, 2026-07-06: their real cycle ended
+  contributions on Jun 20 and is now in an open-ended repayment period):
+  1. **End weekly payments** (reaching the end date, or the button): the cycle
+     enters the **collection phase** — no more Saturday contributions, but loan
+     repayments continue to be recorded, for as long as it takes.
+  2. **Share out now**: whenever the treasurer decides, the pot is split
+     (see §5) and the cycle is closed for good.
+- Cycle states: `active` → `collecting` → `ended`.
 - Ended cycles are **archived**: read-only, still viewable and PDF-exportable.
-- Only **one active cycle** at a time.
+- Only **one non-ended cycle** at a time.
 
 ## 2. Weekly contributions
 
@@ -128,9 +134,10 @@ payout_i = share_i − outstanding_i               (may be NEGATIVE)
 
 ## 7. Catch-up (historical records)
 
-The group's **current cycle started Sat 2026-02-01 and ends Sat 2026-07-26**
-(owner, 2026-07-06). The treasurer must be able to enter everything that already
-happened and then continue live. Therefore:
+The group's **current cycle started Sat 2026-02-07; weekly contributions ended
+Sat 2026-06-20** and it is now in the collection phase — members are paying off
+loans "until who knows when" (owner, 2026-07-06). The treasurer must be able to
+enter everything that already happened and then continue live. Therefore:
 
 - A cycle may be created with a **start date in the past**.
 - **All record types accept past dates**: contributions (backfill the Saturday
@@ -161,3 +168,11 @@ happened and then continue live. Therefore:
 
 - Partial weekly contributions: **not needed** — tick = paid in full (owner confirmed 2026-07-06).
 - Mid-cycle member joins: **not needed** — roster changes at new cycle only (owner confirmed 2026-07-06).
+
+## 11. Open questions (awaiting owner)
+
+- During the **collection phase**, do overdue loans still roll over with a fresh
+  20% (current implementation: **yes**, rules unchanged), or is interest frozen
+  after the end date?
+- Is the normal share-out done only once everyone has fully paid (pot = pure
+  cash), or sometimes earlier with debts deducted from shares? (Both supported.)

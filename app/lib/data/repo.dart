@@ -36,13 +36,10 @@ class Repo {
 
   // ── Cycles ────────────────────────────────────────────────────────────────
 
-  Stream<Cycle?> watchActiveCycle() => (db.select(db.cycles)
-        ..where((c) => c.status.equals('active'))
-        ..limit(1))
-      .watchSingleOrNull();
-
+  /// The cycle currently in use: contributing ('active') or in the
+  /// post-end collection phase ('collecting').
   Future<Cycle?> activeCycle() => (db.select(db.cycles)
-        ..where((c) => c.status.equals('active'))
+        ..where((c) => c.status.isIn(['active', 'collecting']))
         ..limit(1))
       .getSingleOrNull();
 
@@ -93,14 +90,44 @@ class Repo {
     final cycle = await (db.select(db.cycles)
           ..where((c) => c.id.equals(cycleId)))
         .getSingle();
-    if (cycle.status != 'active') {
-      throw StateError('Only the active cycle can be edited');
+    if (cycle.status == 'ended') {
+      throw StateError('Ended cycles cannot be edited');
     }
     if (endDate != null && !endDate.isAfter(fromIso(cycle.startDate))) {
       throw ArgumentError('End date must be after the start date');
     }
     await (db.update(db.cycles)..where((c) => c.id.equals(cycleId))).write(
         CyclesCompanion(endDate: Value(endDate == null ? null : iso(endDate))));
+  }
+
+  /// Start date is editable (owner request 2026-07-06) — dates are fixable,
+  /// members/multipliers stay locked.
+  Future<void> editStartDate(String cycleId, DateTime startDate) async {
+    final cycle = await (db.select(db.cycles)
+          ..where((c) => c.id.equals(cycleId)))
+        .getSingle();
+    if (cycle.status == 'ended') {
+      throw StateError('Ended cycles cannot be edited');
+    }
+    if (cycle.endDate != null &&
+        !fromIso(cycle.endDate!).isAfter(startDate)) {
+      throw ArgumentError('Start date must be before the end date');
+    }
+    await (db.update(db.cycles)..where((c) => c.id.equals(cycleId)))
+        .write(CyclesCompanion(startDate: Value(iso(startDate))));
+  }
+
+  /// Step 1 of ending (SPEC 5): stop weekly contributions. The cycle enters
+  /// the collection phase — repayments (and rollovers) continue until the
+  /// treasurer runs the share-out.
+  Future<void> endContributions(Cycle cycle, {DateTime? asOf}) async {
+    if (cycle.status != 'active') {
+      throw StateError('Contributions are already ended');
+    }
+    final date = asOf ?? today();
+    await (db.update(db.cycles)..where((c) => c.id.equals(cycle.id))).write(
+        CyclesCompanion(
+            status: const Value('collecting'), endDate: Value(iso(date))));
   }
 
   Future<List<Member>> membersOf(String cycleId) => (db.select(db.members)
@@ -313,10 +340,9 @@ class Repo {
 
   // ── End cycle & share-out (SPEC 5) ───────────────────────────────────────
 
-  /// Ends the cycle now and computes+persists the share-out.
-  /// Fails if any loan is still overdue-unconfirmed? No — outstanding loans
-  /// are settled against shares per SPEC 5; overdue prompts should be
-  /// resolved first in the UI flow, but math works either way.
+  /// Step 2 of ending (SPEC 5): the share-out. Splits the pot by multiplier
+  /// weight; any remaining debts are deducted from shares (negative final
+  /// balances allowed). Closes the cycle for good.
   Future<ShareOut> endCycle(Cycle cycle, {DateTime? asOf}) async {
     final now = asOf ?? today();
     final members = await membersOf(cycle.id);
