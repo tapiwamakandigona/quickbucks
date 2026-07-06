@@ -129,6 +129,18 @@ void main() {
 
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('goldens/error_new_loan_sheet.png'));
+
+    // Fill it in properly: the live "will owe" preview must appear
+    // (owner pick #3: answer "how much will I owe?" before saving).
+    await tester.tap(find.text('Who is borrowing?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mary').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Amount (US\$)'), '150');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Mary will owe \$180.00 by'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('goldens/loan_preview_sheet.png'));
     await state.repo.db.close();
   });
 }

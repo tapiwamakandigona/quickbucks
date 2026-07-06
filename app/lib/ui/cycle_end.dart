@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../data/backup.dart' as backup;
 import '../data/db.dart';
 import '../data/repo.dart';
+import '../data/reminder.dart' as reminder;
 import '../state.dart';
 import '../theme.dart';
 import 'common.dart';
@@ -103,11 +104,21 @@ class CycleSettingsScreen extends StatelessWidget {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.history, size: 32),
+                title: const Text('Automatic backups'),
+                subtitle: const Text(
+                    'The app saves a copy by itself every day it is used'),
+                onTap: () => _restoreAuto(context),
+              ),
+              const Divider(height: 1),
+              ListTile(
                 leading: const Icon(Icons.password, size: 32),
                 title: const Text('App PIN'),
                 subtitle: const Text('Lock QuickBucks with a secret number'),
                 onTap: () => managePin(context),
               ),
+              const Divider(height: 1),
+              const _SaturdayReminderTile(),
             ]),
           ),
           if (app.archived.isNotEmpty) ...[
@@ -263,6 +274,70 @@ Future<void> _restore(BuildContext context) async {
   }
 }
 
+/// Lists the automatic daily backups and restores the chosen one.
+Future<void> _restoreAuto(BuildContext context) async {
+  final app = context.read<AppState>();
+  final dir = app.autoBackupDir;
+  final files = dir == null ? <File>[] : backup.listAutoBackups(dir);
+  if (files.isEmpty) {
+    showNote(context, 'No automatic backups yet — use the app once and one '
+        'will be saved.');
+    return;
+  }
+  final chosen = await showModalBottomSheet<File>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetCtx) => SafeArea(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Text('Go back to an earlier day',
+              style: Theme.of(sheetCtx).textTheme.titleLarge),
+        ),
+        for (final f in files)
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: Text(_autoBackupLabel(f)),
+            onTap: () => Navigator.pop(sheetCtx, f),
+          ),
+        const SizedBox(height: 12),
+      ]),
+    ),
+  );
+  if (chosen == null || !context.mounted) return;
+  final ok = await confirmAction(
+    context,
+    title: 'Go back to ${_autoBackupLabel(chosen)}?',
+    message: 'Everything currently in the app will be REPLACED by that '
+        'day\'s copy. Changes made after it will be lost.',
+    yes: 'Replace everything',
+  );
+  if (!ok || !context.mounted) return;
+  try {
+    await backup.importSnapshot(app.repo.db, await chosen.readAsString());
+    await app.refresh();
+    if (context.mounted) {
+      showNote(context, 'Backup restored ✓');
+      Navigator.popUntil(context, (r) => r.isFirst);
+    }
+  } catch (e) {
+    if (context.mounted) {
+      showNote(context,
+          'Restore failed — nothing was changed: ${friendlyError(e)}',
+          error: true);
+    }
+  }
+}
+
+/// 'quickbucks-auto-2026-07-06.json' -> 'Mon, 6 Jul 2026'.
+String _autoBackupLabel(File f) {
+  final name = f.path.split(Platform.pathSeparator).last;
+  final m = RegExp(r'(\d{4})-(\d{2})-(\d{2})').firstMatch(name);
+  if (m == null) return name;
+  return prettyDate(DateTime(
+      int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!)));
+}
+
 /// Plain-text share-out summary, ready for the group's WhatsApp chat.
 String _shareOutText(Cycle cycle, ShareOut shareOut, List<ShareOutLine> lines,
     String Function(String) nameOf) {
@@ -362,6 +437,14 @@ class ShareOutSheetScreen extends StatelessWidget {
                 ),
               ),
               Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: FilledButton.tonalIcon(
+                  onPressed: () => exportShareOutSlips(context, cycle),
+                  icon: const Icon(Icons.receipt_long),
+                  label: const Text('Print slips — one per member'),
+                ),
+              ),
+              Padding(
                 padding: const EdgeInsets.all(20),
                 child: OutlinedButton.icon(
                   onPressed: () => exportCyclePdf(context, cycle),
@@ -373,6 +456,49 @@ class ShareOutSheetScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Toggle for the weekly Saturday-morning notification.
+class _SaturdayReminderTile extends StatefulWidget {
+  const _SaturdayReminderTile();
+
+  @override
+  State<_SaturdayReminderTile> createState() => _SaturdayReminderTileState();
+}
+
+class _SaturdayReminderTileState extends State<_SaturdayReminderTile> {
+  bool? _on;
+
+  @override
+  void initState() {
+    super.initState();
+    reminder.reminderEnabled().then((v) {
+      if (mounted) setState(() => _on = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      secondary: const Icon(Icons.notifications_active, size: 32),
+      title: const Text('Saturday reminder'),
+      subtitle: const Text('A note every Saturday at 8:00 to open the book'),
+      value: _on ?? false,
+      onChanged: _on == null
+          ? null
+          : (v) async {
+              final messenger = ScaffoldMessenger.of(context);
+              final ok = await reminder.setReminder(v);
+              if (!mounted) return;
+              if (!ok) {
+                messenger.showSnackBar(const SnackBar(
+                    content: Text('The phone did not allow notifications. '
+                        'Allow them for QuickBucks in phone Settings.')));
+              }
+              setState(() => _on = v && ok);
+            },
     );
   }
 }

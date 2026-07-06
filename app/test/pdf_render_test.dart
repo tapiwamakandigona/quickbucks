@@ -96,5 +96,25 @@ void main() {
     final stmtBytes = await statement.save();
     expect(stmtBytes.length, greaterThan(1000));
     File('${outDir.path}/mary_statement.pdf').writeAsBytesSync(stmtBytes);
+
+    // ── Share-out slips (end the seeded cycle, then build) ──
+    await repo.endCycle(cycle);
+    final so = (await repo.shareOutOf(cycle.id))!;
+    final savedByMember = <String, int>{};
+    for (final c in contributions) {
+      savedByMember[c.memberId] =
+          (savedByMember[c.memberId] ?? 0) + c.amountCents;
+    }
+    final slips = buildShareOutSlipsDoc(
+      theme: theme,
+      cycle: cycle,
+      members: members,
+      shareOut: so.$1,
+      lines: so.$2,
+      savedByMember: savedByMember,
+    );
+    final slipBytes = await slips.save();
+    expect(slipBytes.length, greaterThan(1000));
+    File('${outDir.path}/shareout_slips.pdf').writeAsBytesSync(slipBytes);
   });
 }

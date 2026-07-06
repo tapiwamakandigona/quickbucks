@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:quickbucks/state.dart';
 import 'package:quickbucks/theme.dart';
 import 'package:quickbucks/ui/contributions.dart';
@@ -46,6 +47,7 @@ Future<void> _shot(WidgetTester tester, AppState state, Widget screen,
 
 void main() {
   setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
     if (Platform.isLinux) {
       open.overrideFor(OperatingSystem.linux, () {
         try {

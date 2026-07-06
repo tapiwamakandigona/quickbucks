@@ -1,10 +1,12 @@
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'data/db.dart';
 import 'data/pin.dart' as pin;
+import 'data/reminder.dart' as reminder;
 import 'data/repo.dart';
 import 'state.dart';
 import 'theme.dart';
@@ -22,7 +24,14 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final db = AppDb(driftDatabase(name: 'quickbucks'));
   final state = AppState(Repo(db));
-  state.refresh();
+  getApplicationDocumentsDirectory().then((dir) {
+    state.autoBackupDir = dir;
+  });
+  state.refresh().then((_) {
+    // Keep the weekly reminder scheduled while payments run; clear it after.
+    reminder.syncReminder(
+        contributionsRunning: state.cycle?.status == 'active');
+  });
   if (_sentryDsn.isEmpty) {
     runApp(QuickBucksApp(state: state));
     return;
@@ -62,15 +71,42 @@ class _Root extends StatefulWidget {
   State<_Root> createState() => _RootState();
 }
 
-class _RootState extends State<_Root> {
+class _RootState extends State<_Root> with WidgetsBindingObserver {
   bool? _locked;
+  DateTime? _leftAt;
+
+  /// Coming back after this long asks for the PIN again.
+  static const _relockAfter = Duration(seconds: 30);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     pin.pinIsSet().then((set) {
       if (mounted) setState(() => _locked = set);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    if (lifecycle == AppLifecycleState.paused ||
+        lifecycle == AppLifecycleState.hidden) {
+      _leftAt ??= DateTime.now();
+    } else if (lifecycle == AppLifecycleState.resumed) {
+      final leftAt = _leftAt;
+      _leftAt = null;
+      if (_locked == true || leftAt == null) return;
+      if (DateTime.now().difference(leftAt) < _relockAfter) return;
+      pin.pinIsSet().then((set) {
+        if (set && mounted) setState(() => _locked = true);
+      });
+    }
   }
 
   @override

@@ -96,183 +96,190 @@ pw.Document buildCycleLedgerDoc({
                 fontSize: 16, fontWeight: pw.FontWeight.bold, color: _green)),
       );
 
-  doc.addPage(pw.MultiPage(
-    pageFormat: PdfPageFormat.a4,
-    margin: const pw.EdgeInsets.all(32),
-    footer: (ctx) => pw.Align(
-      alignment: pw.Alignment.centerRight,
-      child: pw.Text('QuickBucks — page ${ctx.pageNumber}/${ctx.pagesCount}',
-          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
-    ),
-    build: (ctx) => [
-      // ── Title & summary ──────────────────────────────────────────────
-      pw.Container(
-        padding: const pw.EdgeInsets.all(16),
-        decoration: pw.BoxDecoration(
-            color: _green, borderRadius: pw.BorderRadius.circular(8)),
-        child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Text('QuickBucks',
-                  style: pw.TextStyle(
-                      color: _gold,
-                      fontSize: 22,
-                      fontWeight: pw.FontWeight.bold)),
-              pw.Text(cycle.name,
-                  style: const pw.TextStyle(
-                      color: PdfColors.white, fontSize: 14)),
-            ]),
-            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-              pw.Text('${d(cycle.startDate)} → ${cycle.endDate == null ? 'ongoing' : d(cycle.endDate!)}',
-                  style: const pw.TextStyle(
-                      color: PdfColors.white, fontSize: 11)),
-              pw.Text('Printed ${prettyDate(today())}',
-                  style: const pw.TextStyle(
-                      color: PdfColors.white, fontSize: 11)),
-            ]),
-          ],
-        ),
+  void addSection(List<pw.Widget> children) {
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      footer: (ctx) => pw.Align(
+        alignment: pw.Alignment.centerRight,
+        child: pw.Text('QuickBucks — page ${ctx.pageNumber}/${ctx.pagesCount}',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
       ),
-      pw.SizedBox(height: 12),
-      pw.Row(children: [
-        _stat('Cash in the box', money(cash)),
-        pw.SizedBox(width: 12),
-        _stat('Pool value (incl. loans out)', money(poolValue)),
-        pw.SizedBox(width: 12),
-        _stat('Members', '${members.length} (${members.fold(0, (s, m) => s + m.multiplier)} shares)'),
-      ]),
+      build: (ctx) => children,
+    ));
+  }
 
-      // ── Members ──────────────────────────────────────────────────────
-      header('Members'),
+  // ── Page 1: title, summary & members ───────────────────────────────
+  addSection([
+    pw.Container(
+      padding: const pw.EdgeInsets.all(16),
+      decoration: pw.BoxDecoration(
+          color: _green, borderRadius: pw.BorderRadius.circular(8)),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Text('QuickBucks',
+                style: pw.TextStyle(
+                    color: _gold,
+                    fontSize: 22,
+                    fontWeight: pw.FontWeight.bold)),
+            pw.Text(cycle.name,
+                style: const pw.TextStyle(
+                    color: PdfColors.white, fontSize: 14)),
+          ]),
+          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+            pw.Text('${d(cycle.startDate)} → ${cycle.endDate == null ? 'ongoing' : d(cycle.endDate!)}',
+                style: const pw.TextStyle(
+                    color: PdfColors.white, fontSize: 11)),
+            pw.Text('Printed ${prettyDate(today())}',
+                style: const pw.TextStyle(
+                    color: PdfColors.white, fontSize: 11)),
+          ]),
+        ],
+      ),
+    ),
+    pw.SizedBox(height: 12),
+    pw.Row(children: [
+      _stat('Cash in the box', money(cash)),
+      pw.SizedBox(width: 12),
+      _stat('Pool value (incl. loans out)', money(poolValue)),
+      pw.SizedBox(width: 12),
+      _stat('Members', '${members.length} (${members.fold(0, (s, m) => s + m.multiplier)} shares)'),
+    ]),
+    header('Members'),
+    pw.TableHelper.fromTextArray(
+      headers: ['Member', 'Multiplier', 'Pays each Saturday'],
+      data: [
+        for (final m in members)
+          [m.name, '×${m.multiplier}', money(m.multiplier * cycle.weeklyUnitCents)]
+      ],
+      headerStyle: pw.TextStyle(
+          color: PdfColors.white, fontWeight: pw.FontWeight.bold),
+      headerDecoration: const pw.BoxDecoration(color: _green),
+      cellStyle: const pw.TextStyle(fontSize: 10),
+    ),
+  ]);
+
+  // ── Page 2: the Saturday book ──────────────────────────────────────
+  addSection([
+    header('Weekly payments (✓ = paid)'),
+    if (saturdays.isEmpty)
+      pw.Text('No weekly payments recorded.',
+          style: const pw.TextStyle(fontSize: 10))
+    else
       pw.TableHelper.fromTextArray(
-        headers: ['Member', 'Multiplier', 'Pays each Saturday'],
+        headers: ['Saturday', ...members.map((m) => m.name)],
         data: [
-          for (final m in members)
-            [m.name, '×${m.multiplier}', money(m.multiplier * cycle.weeklyUnitCents)]
+          for (final s in saturdays)
+            [
+              shortDate(fromIso(s)),
+              ...members.map((m) =>
+                  ticked.containsKey('${m.id}|$s') ? '✓' : '—'),
+            ]
         ],
         headerStyle: pw.TextStyle(
-            color: PdfColors.white, fontWeight: pw.FontWeight.bold),
+            color: PdfColors.white,
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 9),
+        headerDecoration: const pw.BoxDecoration(color: _green),
+        cellStyle: const pw.TextStyle(fontSize: 9),
+        cellAlignment: pw.Alignment.center,
+        cellAlignments: {0: pw.Alignment.centerLeft},
+      ),
+  ]);
+
+  // ── Page 3: loans & their payments ─────────────────────────────────
+  addSection([
+    header('Loans'),
+    if (loans.isEmpty)
+      pw.Text('No loans in this cycle.',
+          style: const pw.TextStyle(fontSize: 10))
+    else
+      pw.TableHelper.fromTextArray(
+        headers: [
+          'Member', 'Taken', 'Amount', 'Owed (+20%)', 'Due Sat',
+          'Paid', 'Status'
+        ],
+        data: [
+          for (final l in loans)
+            [
+              nameOf(l.memberId),
+              d(l.loanDate),
+              money(l.principalCents),
+              money(l.owedCents),
+              d(l.dueDate),
+              money((paymentsByLoan[l.id] ?? [])
+                  .fold(0, (s, p) => s + p.amountCents)),
+              switch (l.status) {
+                'active' =>
+                  'open — ${money(outstandingByLoan[l.id] ?? 0)} left',
+                'paid' => 'paid off',
+                _ => 'rolled over',
+              },
+            ]
+        ],
+        headerStyle: pw.TextStyle(
+            color: PdfColors.white,
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 9),
+        headerDecoration: const pw.BoxDecoration(color: _green),
+        cellStyle: const pw.TextStyle(fontSize: 9),
+      ),
+    if (paymentsByLoan.values.any((l) => l.isNotEmpty)) ...[
+      header('Loan payments'),
+      pw.TableHelper.fromTextArray(
+        headers: ['Member', 'Paid on', 'Amount'],
+        data: [
+          for (final l in loans)
+            for (final p in paymentsByLoan[l.id] ?? <LoanPayment>[])
+              [nameOf(l.memberId), d(p.paidOn), money(p.amountCents)]
+        ],
+        headerStyle: pw.TextStyle(
+            color: PdfColors.white,
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 9),
+        headerDecoration: const pw.BoxDecoration(color: _green),
+        cellStyle: const pw.TextStyle(fontSize: 9),
+      ),
+    ],
+  ]);
+
+  // ── Page 4: share-out (only once the cycle is shared out) ──────────
+  if (shareOut != null) {
+    addSection([
+      header('Share-out (final balance sheet)'),
+      pw.Text(
+          'Pot shared: ${money(shareOut.$1.potCents)}   ·   Cash paid out: ${money(shareOut.$1.cashCents)}   ·   Date: ${d(shareOut.$1.createdOn)}',
+          style: const pw.TextStyle(fontSize: 10)),
+      pw.SizedBox(height: 6),
+      pw.TableHelper.fromTextArray(
+        headers: ['Member', 'Shares', 'Share of pot', 'Owed deducted', 'Final payout'],
+        data: [
+          for (final l in shareOut.$2)
+            [
+              nameOf(l.memberId),
+              '×${l.multiplier}',
+              money(l.shareCents),
+              l.debtDeductedCents > 0 ? money(l.debtDeductedCents) : '—',
+              money(l.payoutCents),
+            ]
+        ],
+        headerStyle: pw.TextStyle(
+            color: PdfColors.white,
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 9),
         headerDecoration: const pw.BoxDecoration(color: _green),
         cellStyle: const pw.TextStyle(fontSize: 10),
       ),
-
-      // ── Contribution grid ────────────────────────────────────────────
-      header('Weekly payments (✓ = paid)'),
-      if (saturdays.isEmpty)
-        pw.Text('No weekly payments recorded.',
-            style: const pw.TextStyle(fontSize: 10))
-      else
-        pw.TableHelper.fromTextArray(
-          headers: ['Saturday', ...members.map((m) => m.name)],
-          data: [
-            for (final s in saturdays)
-              [
-                shortDate(fromIso(s)),
-                ...members.map((m) =>
-                    ticked.containsKey('${m.id}|$s') ? '✓' : '—'),
-              ]
-          ],
-          headerStyle: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: _green),
-          cellStyle: const pw.TextStyle(fontSize: 9),
-          cellAlignment: pw.Alignment.center,
-          cellAlignments: {0: pw.Alignment.centerLeft},
-        ),
-
-      // ── Loan register ────────────────────────────────────────────────
-      header('Loans'),
-      if (loans.isEmpty)
-        pw.Text('No loans in this cycle.',
-            style: const pw.TextStyle(fontSize: 10))
-      else
-        pw.TableHelper.fromTextArray(
-          headers: [
-            'Member', 'Taken', 'Amount', 'Owed (+20%)', 'Due Sat',
-            'Paid', 'Status'
-          ],
-          data: [
-            for (final l in loans)
-              [
-                nameOf(l.memberId),
-                d(l.loanDate),
-                money(l.principalCents),
-                money(l.owedCents),
-                d(l.dueDate),
-                money((paymentsByLoan[l.id] ?? [])
-                    .fold(0, (s, p) => s + p.amountCents)),
-                switch (l.status) {
-                  'active' =>
-                    'open — ${money(outstandingByLoan[l.id] ?? 0)} left',
-                  'paid' => 'paid off',
-                  _ => 'rolled over',
-                },
-              ]
-          ],
-          headerStyle: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: _green),
-          cellStyle: const pw.TextStyle(fontSize: 9),
-        ),
-
-      // ── Payment log ──────────────────────────────────────────────────
-      if (paymentsByLoan.values.any((l) => l.isNotEmpty)) ...[
-        header('Loan payments'),
-        pw.TableHelper.fromTextArray(
-          headers: ['Member', 'Paid on', 'Amount'],
-          data: [
-            for (final l in loans)
-              for (final p in paymentsByLoan[l.id] ?? <LoanPayment>[])
-                [nameOf(l.memberId), d(p.paidOn), money(p.amountCents)]
-          ],
-          headerStyle: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: _green),
-          cellStyle: const pw.TextStyle(fontSize: 9),
-        ),
-      ],
-
-      // ── Share-out ────────────────────────────────────────────────────
-      if (shareOut != null) ...[
-        header('Share-out (final balance sheet)'),
+      pw.SizedBox(height: 4),
+      if (shareOut.$2.any((l) => l.payoutCents < 0))
         pw.Text(
-            'Pot shared: ${money(shareOut.$1.potCents)}   ·   Cash paid out: ${money(shareOut.$1.cashCents)}   ·   Date: ${d(shareOut.$1.createdOn)}',
-            style: const pw.TextStyle(fontSize: 10)),
-        pw.SizedBox(height: 6),
-        pw.TableHelper.fromTextArray(
-          headers: ['Member', 'Shares', 'Share of pot', 'Owed deducted', 'Final payout'],
-          data: [
-            for (final l in shareOut.$2)
-              [
-                nameOf(l.memberId),
-                '×${l.multiplier}',
-                money(l.shareCents),
-                l.debtDeductedCents > 0 ? money(l.debtDeductedCents) : '—',
-                money(l.payoutCents),
-              ]
-          ],
-          headerStyle: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: _green),
-          cellStyle: const pw.TextStyle(fontSize: 10),
-        ),
-        pw.SizedBox(height: 4),
-        if (shareOut.$2.any((l) => l.payoutCents < 0))
-          pw.Text(
-              'Negative payout = the member still owes the group that amount.',
-              style: pw.TextStyle(fontSize: 9, color: _red)),
-      ],
-    ],
-  ));
+            'Negative payout = the member still owes the group that amount.',
+            style: pw.TextStyle(fontSize: 9, color: _red)),
+    ]);
+  }
+
   return doc;
 }
 
@@ -454,4 +461,117 @@ final doc = pw.Document(theme: theme);
     ],
   ));
   return doc;
+}
+
+/// Share-out slips: one small slip per member, three to an A4 page with
+/// dashed cut lines — the treasurer hands each member her own slip.
+pw.Document buildShareOutSlipsDoc({
+  required pw.ThemeData theme,
+  required Cycle cycle,
+  required List<Member> members,
+  required ShareOut shareOut,
+  required List<ShareOutLine> lines,
+  required Map<String, int> savedByMember,
+}) {
+  final doc = pw.Document(title: '${cycle.name} — share-out slips', theme: theme);
+  String nameOf(String id) => members.firstWhere((m) => m.id == id).name;
+
+  pw.Widget row(String label, String value, {bool strong = false}) =>
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 3),
+        child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(label, style: const pw.TextStyle(fontSize: 10)),
+              pw.Text(value,
+                  style: pw.TextStyle(
+                      fontSize: strong ? 14 : 10,
+                      fontWeight:
+                          strong ? pw.FontWeight.bold : pw.FontWeight.normal)),
+            ]),
+      );
+
+  pw.Widget slip(ShareOutLine l) => pw.Container(
+        padding: const pw.EdgeInsets.all(14),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(
+              color: PdfColors.grey600, style: pw.BorderStyle.dashed),
+          borderRadius: pw.BorderRadius.circular(6),
+        ),
+        child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(nameOf(l.memberId),
+                        style: pw.TextStyle(
+                            fontSize: 15, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('${cycle.name} · ${prettyDate(fromIso(shareOut.createdOn))}',
+                        style: const pw.TextStyle(
+                            fontSize: 9, color: PdfColors.grey700)),
+                  ]),
+              pw.Divider(color: PdfColors.grey400, height: 10),
+              row('Saved this cycle (×${l.multiplier})',
+                  money(savedByMember[l.memberId] ?? 0)),
+              row('Share of the pot', money(l.shareCents)),
+              if (l.debtDeductedCents > 0)
+                row('Loan still owed (deducted)',
+                    '− ${money(l.debtDeductedCents)}'),
+              pw.Divider(color: PdfColors.grey400, height: 10),
+              row(l.payoutCents < 0 ? 'Still owes the group' : 'Takes home',
+                  money(l.payoutCents.abs()),
+                  strong: true),
+              pw.SizedBox(height: 4),
+              pw.Text('Made with QuickBucks',
+                  style: const pw.TextStyle(
+                      fontSize: 7, color: PdfColors.grey500)),
+            ]),
+      );
+
+  for (var i = 0; i < lines.length; i += 3) {
+    final chunk = lines.sublist(i, i + 3 > lines.length ? lines.length : i + 3);
+    doc.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (ctx) => pw.Column(children: [
+        for (final l in chunk) ...[slip(l), pw.SizedBox(height: 18)],
+      ]),
+    ));
+  }
+  return doc;
+}
+
+/// Gathers data and shares the share-out slips PDF.
+Future<void> exportShareOutSlips(BuildContext context, Cycle cycle) async {
+  final app = context.read<AppState>();
+  final repo = app.repo;
+  try {
+    final so = await repo.shareOutOf(cycle.id);
+    if (so == null) return;
+    final members = await repo.membersOf(cycle.id);
+    final contributions = await repo.contributionsOf(cycle.id);
+    final savedByMember = <String, int>{};
+    for (final c in contributions) {
+      savedByMember[c.memberId] =
+          (savedByMember[c.memberId] ?? 0) + c.amountCents;
+    }
+    final doc = buildShareOutSlipsDoc(
+      theme: await pdfTheme(),
+      cycle: cycle,
+      members: members,
+      shareOut: so.$1,
+      lines: so.$2,
+      savedByMember: savedByMember,
+    );
+    await Printing.sharePdf(
+        bytes: await doc.save(),
+        filename:
+            '${cycle.name} share-out slips.pdf'.replaceAll('/', '-'));
+  } catch (e) {
+    if (context.mounted) {
+      showNote(context, 'Could not make the slips: ${friendlyError(e)}',
+          error: true);
+    }
+  }
 }

@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
 
+import 'data/backup.dart';
 import 'data/db.dart';
 import 'data/repo.dart';
 
@@ -9,6 +13,10 @@ import 'data/repo.dart';
 class AppState extends ChangeNotifier {
   final Repo repo;
   AppState(this.repo);
+
+  /// When set (in main.dart), every refresh quietly writes today's
+  /// auto backup here. Null in tests.
+  Directory? autoBackupDir;
 
   bool loading = true;
   Cycle? cycle;
@@ -45,6 +53,12 @@ class AppState extends ChangeNotifier {
     }
     loading = false;
     notifyListeners();
+    final dir = autoBackupDir;
+    if (dir != null) {
+      // Fire and forget — the safety net must never slow down or break
+      // the actual bookkeeping.
+      unawaited(writeAutoBackup(repo.db, dir));
+    }
   }
 
   /// Saturdays of the active cycle so far (start → today, capped at end date).

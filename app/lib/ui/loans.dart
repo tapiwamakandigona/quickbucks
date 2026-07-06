@@ -341,6 +341,22 @@ class _TakeLoanSheetState extends State<_TakeLoanSheet> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _amountCtrl.addListener(() => setState(() => _error = null));
+  }
+
+  /// "Mary will owe $180.00 by Sat, 8 Aug 2026" — so the treasurer can
+  /// answer "how much will I owe?" before anything is saved.
+  String? get _preview {
+    final cents = parseUsdToCents(_amountCtrl.text);
+    if (_member == null || cents == null || cents <= 0) return null;
+    final owed = domain.owedFor(cents);
+    final due = domain.dueDateFor(_date);
+    return '${_member!.name} will owe ${money(owed)} by ${prettyDate(due)}';
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
@@ -360,7 +376,10 @@ class _TakeLoanSheetState extends State<_TakeLoanSheet> {
               for (final m in widget.members)
                 DropdownMenuItem(value: m, child: Text(m.name))
             ],
-            onChanged: (m) => setState(() => _member = m),
+            onChanged: (m) => setState(() {
+              _member = m;
+              _error = null;
+            }),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -384,6 +403,18 @@ class _TakeLoanSheetState extends State<_TakeLoanSheet> {
               }
             },
           ),
+          if (_preview != null)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: kGoldContainer,
+                borderRadius: QRadius.mdAll,
+              ),
+              child: Text(_preview!,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),

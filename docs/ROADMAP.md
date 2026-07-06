@@ -66,3 +66,11 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Warm paper surfaces + green ink, hairline borders instead of shadows, paper appbar
 - ☑ Flat FAB, gold/danger container tokens, floating dark-ink snackbars
 - Inspired by owner's subagent-toolkit frontend-design skill + LanLink v4 "Ember on Paper"
+
+## v1.2.0 (2026-07-06) — owner picks 1, 3, 4, 5 + PDF quality pass
+- ☑ Saturday reminder: weekly local notification Sat 08:00 (opt-in toggle in settings, auto-clears when weekly payments end; survives reboot; no exact-alarm permission)
+- ☑ Loan preview: "Mary will owe $180.00 by Sat, 8 Aug 2026" live in the new-loan sheet before saving
+- ☑ Share-out slips PDF: one dashed-border slip per member, 3 per A4 page (button on share-out screen)
+- ☑ Auto-backup: daily snapshot to app storage after every change (keeps 7), "Automatic backups" restore list in settings
+- ☑ Auto-lock: PIN asked again after 30s outside the app
+- ☑ PDFs: bundled DejaVu font (built-in Helvetica cannot print ✓/—), human dates, one page per category; permanent render harness (test/pdf_render_test.dart)

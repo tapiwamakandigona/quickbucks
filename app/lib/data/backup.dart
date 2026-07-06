@@ -6,6 +6,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 
 import 'db.dart';
@@ -93,4 +94,51 @@ Future<void> importSnapshot(AppDb db, String jsonText) async {
       await db.into(db.shareOutLines).insert(ShareOutLine.fromJson(r));
     }
   });
+}
+
+// ── Automatic safety-net backups ────────────────────────────────────────────
+// After every change the app quietly writes today's snapshot to its private
+// documents folder and keeps the last [autoBackupKeep] days. This protects
+// against mistakes and corruption (not phone loss — the shareable backup
+// file is still the way to keep records outside the phone).
+
+const autoBackupKeep = 7;
+const autoBackupPrefix = 'quickbucks-auto-';
+
+/// Writes (or overwrites) today's auto backup in [dir]; prunes old ones.
+/// Returns the file written. Never throws — a failed safety net must not
+/// break the actual bookkeeping (errors are reported to the caller as null).
+Future<File?> writeAutoBackup(AppDb db, Directory dir) async {
+  try {
+    final snapshot = await exportSnapshot(db);
+    final now = DateTime.now();
+    final stamp = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    final file = File('${dir.path}/$autoBackupPrefix$stamp.json');
+    await file.writeAsString(exportSnapshotJson(snapshot));
+    final old = listAutoBackups(dir).skip(autoBackupKeep);
+    for (final f in old) {
+      try {
+        f.deleteSync();
+      } catch (_) {}
+    }
+    return file;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Auto backups in [dir], newest first.
+List<File> listAutoBackups(Directory dir) {
+  if (!dir.existsSync()) return [];
+  final files = dir
+      .listSync()
+      .whereType<File>()
+      .where((f) =>
+          f.path.split(Platform.pathSeparator).last.startsWith(autoBackupPrefix) &&
+          f.path.endsWith('.json'))
+      .toList()
+    ..sort((a, b) => b.path.compareTo(a.path));
+  return files;
 }
