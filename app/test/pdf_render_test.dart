@@ -50,10 +50,10 @@ void main() {
     final loans = await repo.loansOf(cycle.id);
     final outstandingByLoan = <String, int>{
       for (final l in loans)
-        if (l.status == 'active') l.id: await repo.outstandingOf(l)
+        if (l.status == 'active') l.id: await repo.outstandingOf(l),
     };
     final paymentsByLoan = <String, List<LoanPayment>>{
-      for (final l in loans) l.id: await repo.paymentRowsOf(l.id)
+      for (final l in loans) l.id: await repo.paymentRowsOf(l.id),
     };
     final totals = await repo.totals(cycle.id);
     final ledger = buildCycleLedgerDoc(
@@ -77,11 +77,11 @@ void main() {
     final saturdays = state.saturdaysSoFar();
     final paid = [
       for (final s in saturdays)
-        if (state.isTicked(mary.id, s)) s
+        if (state.isTicked(mary.id, s)) s,
     ];
     final missed = [
       for (final s in saturdays)
-        if (!state.isTicked(mary.id, s)) s
+        if (!state.isTicked(mary.id, s)) s,
     ];
     final maryLoans = loans.where((l) => l.memberId == mary.id).toList();
     final owed = maryLoans

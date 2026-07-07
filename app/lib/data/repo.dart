@@ -38,15 +38,17 @@ class Repo {
 
   /// The cycle currently in use: contributing ('active') or in the
   /// post-end collection phase ('collecting').
-  Future<Cycle?> activeCycle() => (db.select(db.cycles)
-        ..where((c) => c.status.isIn(['active', 'collecting']))
-        ..limit(1))
-      .getSingleOrNull();
+  Future<Cycle?> activeCycle() =>
+      (db.select(db.cycles)
+            ..where((c) => c.status.isIn(['active', 'collecting']))
+            ..limit(1))
+          .getSingleOrNull();
 
-  Future<List<Cycle>> endedCycles() async => (db.select(db.cycles)
-        ..where((c) => c.status.equals('ended'))
-        ..orderBy([(c) => OrderingTerm.desc(c.startDate)]))
-      .get();
+  Future<List<Cycle>> endedCycles() async =>
+      (db.select(db.cycles)
+            ..where((c) => c.status.equals('ended'))
+            ..orderBy([(c) => OrderingTerm.desc(c.startDate)]))
+          .get();
 
   /// Creates a cycle. Start date may be in the past (catch-up, SPEC 7).
   /// Members + multipliers are locked in here (SPEC 1).
@@ -68,28 +70,36 @@ class Repo {
     }
     final cycleId = _uuid.v4();
     await db.transaction(() async {
-      await db.into(db.cycles).insert(CyclesCompanion.insert(
-            id: cycleId,
-            name: name,
-            startDate: iso(startDate),
-            endDate: Value(endDate == null ? null : iso(endDate)),
-          ));
+      await db
+          .into(db.cycles)
+          .insert(
+            CyclesCompanion.insert(
+              id: cycleId,
+              name: name,
+              startDate: iso(startDate),
+              endDate: Value(endDate == null ? null : iso(endDate)),
+            ),
+          );
       for (final m in members) {
-        await db.into(db.members).insert(MembersCompanion.insert(
-              id: _uuid.v4(),
-              cycleId: cycleId,
-              name: m.name.trim(),
-              multiplier: m.multiplier,
-            ));
+        await db
+            .into(db.members)
+            .insert(
+              MembersCompanion.insert(
+                id: _uuid.v4(),
+                cycleId: cycleId,
+                name: m.name.trim(),
+                multiplier: m.multiplier,
+              ),
+            );
       }
     });
     return cycleId;
   }
 
   Future<void> editEndDate(String cycleId, DateTime? endDate) async {
-    final cycle = await (db.select(db.cycles)
-          ..where((c) => c.id.equals(cycleId)))
-        .getSingle();
+    final cycle = await (db.select(
+      db.cycles,
+    )..where((c) => c.id.equals(cycleId))).getSingle();
     if (cycle.status == 'ended') {
       throw StateError('Ended cycles cannot be edited');
     }
@@ -97,24 +107,25 @@ class Repo {
       throw ArgumentError('End date must be after the start date');
     }
     await (db.update(db.cycles)..where((c) => c.id.equals(cycleId))).write(
-        CyclesCompanion(endDate: Value(endDate == null ? null : iso(endDate))));
+      CyclesCompanion(endDate: Value(endDate == null ? null : iso(endDate))),
+    );
   }
 
   /// Start date is editable (owner request 2026-07-06) — dates are fixable,
   /// members/multipliers stay locked.
   Future<void> editStartDate(String cycleId, DateTime startDate) async {
-    final cycle = await (db.select(db.cycles)
-          ..where((c) => c.id.equals(cycleId)))
-        .getSingle();
+    final cycle = await (db.select(
+      db.cycles,
+    )..where((c) => c.id.equals(cycleId))).getSingle();
     if (cycle.status == 'ended') {
       throw StateError('Ended cycles cannot be edited');
     }
-    if (cycle.endDate != null &&
-        !fromIso(cycle.endDate!).isAfter(startDate)) {
+    if (cycle.endDate != null && !fromIso(cycle.endDate!).isAfter(startDate)) {
       throw ArgumentError('Start date must be before the end date');
     }
-    await (db.update(db.cycles)..where((c) => c.id.equals(cycleId)))
-        .write(CyclesCompanion(startDate: Value(iso(startDate))));
+    await (db.update(db.cycles)..where((c) => c.id.equals(cycleId))).write(
+      CyclesCompanion(startDate: Value(iso(startDate))),
+    );
   }
 
   /// Step 1 of ending (SPEC 5): stop weekly contributions. The cycle enters
@@ -126,14 +137,18 @@ class Repo {
     }
     final date = asOf ?? today();
     await (db.update(db.cycles)..where((c) => c.id.equals(cycle.id))).write(
-        CyclesCompanion(
-            status: const Value('collecting'), endDate: Value(iso(date))));
+      CyclesCompanion(
+        status: const Value('collecting'),
+        endDate: Value(iso(date)),
+      ),
+    );
   }
 
-  Future<List<Member>> membersOf(String cycleId) => (db.select(db.members)
-        ..where((m) => m.cycleId.equals(cycleId))
-        ..orderBy([(m) => OrderingTerm.asc(m.name)]))
-      .get();
+  Future<List<Member>> membersOf(String cycleId) =>
+      (db.select(db.members)
+            ..where((m) => m.cycleId.equals(cycleId))
+            ..orderBy([(m) => OrderingTerm.asc(m.name)]))
+          .get();
 
   // ── Contributions (SPEC 2) ────────────────────────────────────────────────
 
@@ -145,14 +160,18 @@ class Repo {
     if (!domain.isSaturday(saturday)) {
       throw ArgumentError('Contributions are recorded for Saturdays');
     }
-    await db.into(db.contributions).insert(ContributionsCompanion.insert(
-          id: _uuid.v4(),
-          cycleId: cycle.id,
-          memberId: member.id,
-          saturday: iso(saturday),
-          amountCents: cycle.weeklyUnitCents * member.multiplier,
-          recordedOn: iso(today()),
-        ));
+    await db
+        .into(db.contributions)
+        .insert(
+          ContributionsCompanion.insert(
+            id: _uuid.v4(),
+            cycleId: cycle.id,
+            memberId: member.id,
+            saturday: iso(saturday),
+            amountCents: cycle.weeklyUnitCents * member.multiplier,
+            recordedOn: iso(today()),
+          ),
+        );
   }
 
   /// Catch-up helper: tick every member for every Saturday in [saturdays]
@@ -165,7 +184,7 @@ class Repo {
   }) async {
     final existing = {
       for (final c in await contributionsOf(cycle.id))
-        '${c.memberId}|${c.saturday}'
+        '${c.memberId}|${c.saturday}',
     };
     final added = <(String, DateTime)>[];
     await db.transaction(() async {
@@ -181,48 +200,51 @@ class Repo {
   }
 
   Future<void> untickContribution(String memberId, DateTime saturday) async {
-    await (db.delete(db.contributions)
-          ..where((c) =>
-              c.memberId.equals(memberId) & c.saturday.equals(iso(saturday))))
+    await (db.delete(db.contributions)..where(
+          (c) => c.memberId.equals(memberId) & c.saturday.equals(iso(saturday)),
+        ))
         .go();
   }
 
-  Future<List<Contribution>> contributionsOf(String cycleId) =>
-      (db.select(db.contributions)..where((c) => c.cycleId.equals(cycleId)))
-          .get();
+  Future<List<Contribution>> contributionsOf(String cycleId) => (db.select(
+    db.contributions,
+  )..where((c) => c.cycleId.equals(cycleId))).get();
 
   // ── Loans (SPEC 3) ────────────────────────────────────────────────────────
 
   domain.Loan toDomain(Loan l) => domain.Loan(
-        id: l.id,
-        memberId: l.memberId,
-        principalCents: l.principalCents,
-        loanDate: fromIso(l.loanDate),
-        owedCents: l.owedCents,
-        dueDate: fromIso(l.dueDate),
-        status: switch (l.status) {
-          'active' => domain.LoanStatus.active,
-          'paid' => domain.LoanStatus.paid,
-          _ => domain.LoanStatus.rolledOver,
-        },
-        parentLoanId: l.parentLoanId,
-      );
+    id: l.id,
+    memberId: l.memberId,
+    principalCents: l.principalCents,
+    loanDate: fromIso(l.loanDate),
+    owedCents: l.owedCents,
+    dueDate: fromIso(l.dueDate),
+    status: switch (l.status) {
+      'active' => domain.LoanStatus.active,
+      'paid' => domain.LoanStatus.paid,
+      _ => domain.LoanStatus.rolledOver,
+    },
+    parentLoanId: l.parentLoanId,
+  );
 
   Future<List<domain.LoanPayment>> _paymentsOfLoan(String loanId) async {
-    final rows = await (db.select(db.loanPayments)
-          ..where((p) => p.loanId.equals(loanId)))
-        .get();
+    final rows = await (db.select(
+      db.loanPayments,
+    )..where((p) => p.loanId.equals(loanId))).get();
     return [
       for (final r in rows)
         domain.LoanPayment(
-            loanId: r.loanId,
-            amountCents: r.amountCents,
-            paidOn: fromIso(r.paidOn)),
+          loanId: r.loanId,
+          amountCents: r.amountCents,
+          paidOn: fromIso(r.paidOn),
+        ),
     ];
   }
 
-  /// Disburses a new loan. [loanDate] may be in the past (catch-up).
-  /// Not allowed during the collection phase (owner, 2026-07-06).
+  /// Disburses a new loan. [loanDate] may be in the past (catch-up) but must
+  /// be a Saturday (SPEC 3.1, owner 2026-07-07) and the principal a whole
+  /// dollar amount (SPEC §0). Not allowed during the collection phase
+  /// (owner, 2026-07-06).
   Future<String> takeLoan({
     required Cycle cycle,
     required Member member,
@@ -232,6 +254,10 @@ class Repo {
     if (cycle.status != 'active') {
       throw StateError('No new loans during the collection phase');
     }
+    domain.validateLoanDate(loanDate);
+    if (!domain.isWholeDollars(principalCents)) {
+      throw ArgumentError('Loan amounts are whole dollars — no coins');
+    }
     final l = domain.Loan(
       id: _uuid.v4(),
       memberId: member.id,
@@ -239,16 +265,45 @@ class Repo {
       loanDate: loanDate,
       interestPercent: cycle.interestPct,
     );
-    await db.into(db.loans).insert(LoansCompanion.insert(
-          id: l.id,
-          cycleId: cycle.id,
-          memberId: member.id,
-          principalCents: l.principalCents,
-          owedCents: l.owedCents,
-          loanDate: iso(l.loanDate),
-          dueDate: iso(l.dueDate),
-        ));
+    await db
+        .into(db.loans)
+        .insert(
+          LoansCompanion.insert(
+            id: l.id,
+            cycleId: cycle.id,
+            memberId: member.id,
+            principalCents: l.principalCents,
+            owedCents: l.owedCents,
+            loanDate: iso(l.loanDate),
+            dueDate: iso(l.dueDate),
+          ),
+        );
     return l.id;
+  }
+
+  /// One Saturday's loans entered together (SPEC 3.1: the group hands out
+  /// loans on Saturdays, so the treasurer books them as one batch). All or
+  /// nothing — one transaction. Returns the new loan ids for Undo.
+  Future<List<String>> takeLoanBatch({
+    required Cycle cycle,
+    required DateTime saturday,
+    required List<(Member, int)> entries,
+  }) async {
+    if (entries.isEmpty) throw ArgumentError('No loans to record');
+    final ids = <String>[];
+    await db.transaction(() async {
+      for (final (member, cents) in entries) {
+        ids.add(
+          await takeLoan(
+            cycle: cycle,
+            member: member,
+            principalCents: cents,
+            loanDate: saturday,
+          ),
+        );
+      }
+    });
+    return ids;
   }
 
   /// Records a payment; closes the loan automatically when fully paid.
@@ -261,21 +316,33 @@ class Repo {
     final dLoan = toDomain(loan);
     final existing = await _paymentsOfLoan(loan.id);
     domain.validatePayment(dLoan, existing, amountCents);
+    // Whole dollars only (SPEC §0) — except paying off an exact legacy
+    // balance that still has coins on it.
+    if (!domain.isWholeDollars(amountCents) &&
+        amountCents != domain.outstanding(dLoan, existing)) {
+      throw ArgumentError('Payments are whole dollars — no coins');
+    }
     final paymentId = _uuid.v4();
     await db.transaction(() async {
-      await db.into(db.loanPayments).insert(LoanPaymentsCompanion.insert(
-            id: paymentId,
-            loanId: loan.id,
-            amountCents: amountCents,
-            paidOn: iso(paidOn),
-            recordedOn: iso(today()),
-          ));
-      final remaining =
-          domain.outstanding(dLoan, existing) - amountCents;
+      await db
+          .into(db.loanPayments)
+          .insert(
+            LoanPaymentsCompanion.insert(
+              id: paymentId,
+              loanId: loan.id,
+              amountCents: amountCents,
+              paidOn: iso(paidOn),
+              recordedOn: iso(today()),
+            ),
+          );
+      final remaining = domain.outstanding(dLoan, existing) - amountCents;
       if (remaining == 0) {
         await (db.update(db.loans)..where((l) => l.id.equals(loan.id))).write(
-            LoansCompanion(
-                status: const Value('paid'), closedOn: Value(iso(paidOn))));
+          LoansCompanion(
+            status: const Value('paid'),
+            closedOn: Value(iso(paidOn)),
+          ),
+        );
       }
     });
     return paymentId;
@@ -284,23 +351,26 @@ class Repo {
   /// Undo a just-recorded payment. Reopens the loan if that payment had
   /// closed it. Refuses if the loan has since been rolled over.
   Future<void> deletePayment(String paymentId) async {
-    final payment = await (db.select(db.loanPayments)
-          ..where((p) => p.id.equals(paymentId)))
-        .getSingleOrNull();
+    final payment = await (db.select(
+      db.loanPayments,
+    )..where((p) => p.id.equals(paymentId))).getSingleOrNull();
     if (payment == null) throw StateError('That payment no longer exists');
-    final loan = await (db.select(db.loans)
-          ..where((l) => l.id.equals(payment.loanId)))
-        .getSingle();
+    final loan = await (db.select(
+      db.loans,
+    )..where((l) => l.id.equals(payment.loanId))).getSingle();
     if (loan.status == 'rolled_over') {
-      throw StateError('This loan was rolled over — undo is no longer possible');
+      throw StateError(
+        'This loan was rolled over — undo is no longer possible',
+      );
     }
     await db.transaction(() async {
-      await (db.delete(db.loanPayments)..where((p) => p.id.equals(paymentId)))
-          .go();
+      await (db.delete(
+        db.loanPayments,
+      )..where((p) => p.id.equals(paymentId))).go();
       if (loan.status == 'paid') {
         await (db.update(db.loans)..where((l) => l.id.equals(loan.id))).write(
-            const LoansCompanion(
-                status: Value('active'), closedOn: Value(null)));
+          const LoansCompanion(status: Value('active'), closedOn: Value(null)),
+        );
       }
     });
   }
@@ -308,8 +378,9 @@ class Repo {
   /// Undo a just-created loan. Only possible while it has no payments and
   /// was not created by a rollover.
   Future<void> deleteLoan(String loanId) async {
-    final loan = await (db.select(db.loans)..where((l) => l.id.equals(loanId)))
-        .getSingle();
+    final loan = await (db.select(
+      db.loans,
+    )..where((l) => l.id.equals(loanId))).getSingle();
     if (loan.parentLoanId != null) {
       throw StateError('This loan came from a rollover and cannot be undone');
     }
@@ -317,9 +388,9 @@ class Repo {
     if (payments.isNotEmpty) {
       throw StateError('This loan already has payments recorded');
     }
-    final child = await (db.select(db.loans)
-          ..where((l) => l.parentLoanId.equals(loan.id)))
-        .get();
+    final child = await (db.select(
+      db.loans,
+    )..where((l) => l.parentLoanId.equals(loan.id))).get();
     if (child.isNotEmpty) {
       throw StateError('This loan was rolled over and cannot be undone');
     }
@@ -344,16 +415,18 @@ class Repo {
   /// its effective Sunday fell on/before the contribution end date (i.e. it
   /// happened while the cycle was still active — catch-up entry).
   Future<List<Loan>> overdueLoans(String cycleId, {DateTime? asOf}) async {
-    final cycle = await (db.select(db.cycles)
-          ..where((c) => c.id.equals(cycleId)))
-        .getSingle();
+    final cycle = await (db.select(
+      db.cycles,
+    )..where((c) => c.id.equals(cycleId))).getSingle();
     final now = _rolloverCutoff(cycle, asOf ?? today());
-    final rows = await (db.select(db.loans)
-          ..where((l) => l.cycleId.equals(cycleId) & l.status.equals('active')))
-        .get();
+    final rows =
+        await (db.select(db.loans)..where(
+              (l) => l.cycleId.equals(cycleId) & l.status.equals('active'),
+            ))
+            .get();
     return [
       for (final l in rows)
-        if (domain.isRolloverEligible(fromIso(l.dueDate), now)) l
+        if (domain.isRolloverEligible(fromIso(l.dueDate), now)) l,
     ];
   }
 
@@ -369,8 +442,11 @@ class Repo {
 
   /// Confirms a rollover (SPEC 3.4/3.6). The new loan's date is the historical
   /// Sunday after the parent's due Saturday, regardless of confirmation time.
-  Future<String> confirmRollover(Cycle cycle, Loan loan,
-      {DateTime? asOf}) async {
+  Future<String> confirmRollover(
+    Cycle cycle,
+    Loan loan, {
+    DateTime? asOf,
+  }) async {
     final result = domain.rollover(
       toDomain(loan),
       await _paymentsOfLoan(loan.id),
@@ -380,28 +456,35 @@ class Repo {
     );
     await db.transaction(() async {
       await (db.update(db.loans)..where((l) => l.id.equals(loan.id))).write(
-          LoansCompanion(
-              status: const Value('rolled_over'),
-              closedOn: Value(iso(result.newLoan.loanDate))));
+        LoansCompanion(
+          status: const Value('rolled_over'),
+          closedOn: Value(iso(result.newLoan.loanDate)),
+        ),
+      );
       final n = result.newLoan;
-      await db.into(db.loans).insert(LoansCompanion.insert(
-            id: n.id,
-            cycleId: cycle.id,
-            memberId: n.memberId,
-            principalCents: n.principalCents,
-            owedCents: n.owedCents,
-            loanDate: iso(n.loanDate),
-            dueDate: iso(n.dueDate),
-            parentLoanId: Value(n.parentLoanId),
-          ));
+      await db
+          .into(db.loans)
+          .insert(
+            LoansCompanion.insert(
+              id: n.id,
+              cycleId: cycle.id,
+              memberId: n.memberId,
+              principalCents: n.principalCents,
+              owedCents: n.owedCents,
+              loanDate: iso(n.loanDate),
+              dueDate: iso(n.dueDate),
+              parentLoanId: Value(n.parentLoanId),
+            ),
+          );
     });
     return result.newLoan.id;
   }
 
-  Future<List<Loan>> loansOf(String cycleId) => (db.select(db.loans)
-        ..where((l) => l.cycleId.equals(cycleId))
-        ..orderBy([(l) => OrderingTerm.desc(l.loanDate)]))
-      .get();
+  Future<List<Loan>> loansOf(String cycleId) =>
+      (db.select(db.loans)
+            ..where((l) => l.cycleId.equals(cycleId))
+            ..orderBy([(l) => OrderingTerm.desc(l.loanDate)]))
+          .get();
 
   // ── Totals (SPEC 4) ──────────────────────────────────────────────────────
 
@@ -409,21 +492,21 @@ class Repo {
     final contribs = await contributionsOf(cycleId);
     final loans = await loansOf(cycleId);
     final loanIds = {for (final l in loans) l.id};
-    final payments = await (db.select(db.loanPayments)
-          ..where((p) => p.loanId.isIn(loanIds)))
-        .get();
-    final shareOut = await (db.select(db.shareOuts)
-          ..where((s) => s.cycleId.equals(cycleId)))
-        .getSingleOrNull();
+    final payments = await (db.select(
+      db.loanPayments,
+    )..where((p) => p.loanId.isIn(loanIds))).get();
+    final shareOut = await (db.select(
+      db.shareOuts,
+    )..where((s) => s.cycleId.equals(cycleId))).getSingleOrNull();
     var payouts = <int>[];
     if (shareOut != null) {
-      final lines = await (db.select(db.shareOutLines)
-            ..where((l) => l.shareOutId.equals(shareOut.id)))
-          .get();
+      final lines = await (db.select(
+        db.shareOutLines,
+      )..where((l) => l.shareOutId.equals(shareOut.id))).get();
       // Only positive payouts are cash handed out.
       payouts = [
         for (final l in lines)
-          if (l.payoutCents > 0) l.payoutCents
+          if (l.payoutCents > 0) l.payoutCents,
       ];
     }
     return domain.computeTotals(
@@ -432,9 +515,10 @@ class Repo {
       payments: [
         for (final p in payments)
           domain.LoanPayment(
-              loanId: p.loanId,
-              amountCents: p.amountCents,
-              paidOn: fromIso(p.paidOn)),
+            loanId: p.loanId,
+            amountCents: p.amountCents,
+            paidOn: fromIso(p.paidOn),
+          ),
       ],
       payoutAmounts: payouts,
     );
@@ -465,47 +549,63 @@ class Repo {
 
     final shareOutId = _uuid.v4();
     await db.transaction(() async {
-      await db.into(db.shareOuts).insert(ShareOutsCompanion.insert(
-            id: shareOutId,
-            cycleId: cycle.id,
-            potCents: result.potCents,
-            cashCents: result.cashCents,
-            createdOn: iso(now),
-          ));
+      await db
+          .into(db.shareOuts)
+          .insert(
+            ShareOutsCompanion.insert(
+              id: shareOutId,
+              cycleId: cycle.id,
+              potCents: result.potCents,
+              cashCents: result.cashCents,
+              createdOn: iso(now),
+            ),
+          );
       for (final line in result.lines) {
-        await db.into(db.shareOutLines).insert(ShareOutLinesCompanion.insert(
-              id: _uuid.v4(),
-              shareOutId: shareOutId,
-              memberId: line.memberId,
-              multiplier: line.multiplier,
-              shareCents: line.shareCents,
-              debtDeductedCents: line.debtDeductedCents,
-              payoutCents: line.payoutCents,
-            ));
+        await db
+            .into(db.shareOutLines)
+            .insert(
+              ShareOutLinesCompanion.insert(
+                id: _uuid.v4(),
+                shareOutId: shareOutId,
+                memberId: line.memberId,
+                multiplier: line.multiplier,
+                shareCents: line.shareCents,
+                debtDeductedCents: line.debtDeductedCents,
+                payoutCents: line.payoutCents,
+              ),
+            );
       }
       // Settle active loans: they are absorbed into the share-out.
-      await (db.update(db.loans)
-            ..where((l) => l.cycleId.equals(cycle.id) & l.status.equals('active')))
-          .write(LoansCompanion(
-              status: const Value('paid'), closedOn: Value(iso(now))));
+      await (db.update(db.loans)..where(
+            (l) => l.cycleId.equals(cycle.id) & l.status.equals('active'),
+          ))
+          .write(
+            LoansCompanion(
+              status: const Value('paid'),
+              closedOn: Value(iso(now)),
+            ),
+          );
       await (db.update(db.cycles)..where((c) => c.id.equals(cycle.id))).write(
-          CyclesCompanion(
-              status: const Value('ended'),
-              endedOn: Value(iso(now)),
-              endDate: Value(iso(now))));
+        CyclesCompanion(
+          status: const Value('ended'),
+          endedOn: Value(iso(now)),
+          endDate: Value(iso(now)),
+        ),
+      );
     });
-    return (db.select(db.shareOuts)..where((s) => s.id.equals(shareOutId)))
-        .getSingle();
+    return (db.select(
+      db.shareOuts,
+    )..where((s) => s.id.equals(shareOutId))).getSingle();
   }
 
   Future<(ShareOut, List<ShareOutLine>)?> shareOutOf(String cycleId) async {
-    final so = await (db.select(db.shareOuts)
-          ..where((s) => s.cycleId.equals(cycleId)))
-        .getSingleOrNull();
+    final so = await (db.select(
+      db.shareOuts,
+    )..where((s) => s.cycleId.equals(cycleId))).getSingleOrNull();
     if (so == null) return null;
-    final lines = await (db.select(db.shareOutLines)
-          ..where((l) => l.shareOutId.equals(so.id)))
-        .get();
+    final lines = await (db.select(
+      db.shareOutLines,
+    )..where((l) => l.shareOutId.equals(so.id))).get();
     return (so, lines);
   }
 }

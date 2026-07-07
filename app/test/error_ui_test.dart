@@ -30,23 +30,24 @@ Future<AppState> _seed() async {
   final cycle = (await repo.activeCycle())!;
   final members = await repo.membersOf(cycle.id);
   await repo.takeLoan(
-      cycle: cycle,
-      member: members.firstWhere((m) => m.name == 'Mary'),
-      principalCents: 10000,
-      loanDate: domain.day(2026, 5, 6));
+    cycle: cycle,
+    member: members.firstWhere((m) => m.name == 'Mary'),
+    principalCents: 10000,
+    loanDate: domain.day(2026, 5, 9),
+  ); // Saturday (SPEC 3.1)
   final state = AppState(repo);
   await state.refresh();
   return state;
 }
 
 Widget _app(AppState state, Widget home) => ChangeNotifierProvider.value(
-      value: state,
-      child: MaterialApp(
-        theme: quickbucksTheme(),
-        debugShowCheckedModeBanner: false,
-        home: home,
-      ),
-    );
+  value: state,
+  child: MaterialApp(
+    theme: quickbucksTheme(),
+    debugShowCheckedModeBanner: false,
+    home: home,
+  ),
+);
 
 void main() {
   setUpAll(() async {
@@ -74,73 +75,98 @@ void main() {
     await loader.load();
   });
 
-  testWidgets('overpayment error is visible INSIDE the open payment sheet',
-      tags: 'golden', (tester) async {
-    tester.view.physicalSize = const Size(393, 851) * 3;
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'overpayment error is visible INSIDE the open payment sheet',
+    tags: 'golden',
+    (tester) async {
+      tester.view.physicalSize = const Size(393, 851) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
 
-    final state = await _seed();
-    await tester.pumpWidget(_app(state, const LoansScreen()));
-    await tester.pumpAndSettle();
+      final state = await _seed();
+      await tester.pumpWidget(_app(state, const LoansScreen()));
+      await tester.pumpAndSettle();
 
-    // Open Mary's loan payment sheet (via the overdue card's button).
-    await tester.tap(find.text('Record payment').first);
-    await tester.pumpAndSettle();
+      // Open Mary's loan payment sheet (via the overdue card's button).
+      await tester.tap(find.text('Record payment').first);
+      await tester.pumpAndSettle();
 
-    // Type more than she owes ($120) and submit.
-    await tester.enterText(find.byType(TextField).last, '500');
-    await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
-    await tester.pumpAndSettle();
+      // Type more than she owes ($120) and submit.
+      await tester.enterText(find.byType(TextField).last, '500');
+      await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
+      await tester.pumpAndSettle();
 
-    // The error text must be visible and the sheet still open.
-    expect(find.text('That is more than the \$120.00 owed'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Record payment'), findsOneWidget);
+      // The error text must be visible and the sheet still open.
+      expect(find.text('That is more than the \$120 owed'), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, 'Record payment'),
+        findsOneWidget,
+      );
 
-    await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('goldens/error_overpay_sheet.png'));
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/error_overpay_sheet.png'),
+      );
 
-    // Fix the amount: the error stays until submit, then sheet closes to
-    // the confirmation dialog.
-    await tester.enterText(find.byType(TextField).last, '50');
-    await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
-    await tester.pumpAndSettle();
-    expect(find.text('Record this payment?'), findsOneWidget);
-    await state.repo.db.close();
-  });
+      // Fix the amount: the error stays until submit, then sheet closes to
+      // the confirmation dialog.
+      await tester.enterText(find.byType(TextField).last, '50');
+      await tester.tap(find.widgetWithText(FilledButton, 'Record payment'));
+      await tester.pumpAndSettle();
+      expect(find.text('Record this payment?'), findsOneWidget);
+      await state.repo.db.close();
+    },
+  );
 
-  testWidgets('new-loan sheet shows inline validation errors', tags: 'golden',
-      (tester) async {
-    tester.view.physicalSize = const Size(393, 851) * 3;
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'Saturday loans book shows inline validation errors',
+    tags: 'golden',
+    (tester) async {
+      tester.view.physicalSize = const Size(393, 851) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
 
-    final state = await _seed();
-    await tester.pumpWidget(_app(state, const LoansScreen()));
-    await tester.pumpAndSettle();
+      final state = await _seed();
+      await tester.pumpWidget(_app(state, const LoansScreen()));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('New loan'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('New loans'));
+      await tester.pumpAndSettle();
 
-    // Submit with nothing chosen.
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    expect(find.text('Choose a member'), findsOneWidget);
+      // Submit with nothing filled in.
+      await tester.tap(find.widgetWithText(FilledButton, 'Save loans'));
+      await tester.pumpAndSettle();
+      expect(find.text('Add at least one loan'), findsOneWidget);
 
-    await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('goldens/error_new_loan_sheet.png'));
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/error_new_loan_sheet.png'),
+      );
 
-    // Fill it in properly: the live "will owe" preview must appear
-    // (owner pick #3: answer "how much will I owe?" before saving).
-    await tester.tap(find.text('Who is borrowing?'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Mary').last);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Amount (US\$)'), '150');
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Mary will owe \$180.00 by'), findsOneWidget);
-    await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('goldens/loan_preview_sheet.png'));
-    await state.repo.db.close();
-  });
+      // Fill it in properly: the live "will owe" preview must appear
+      // (owner pick #3: answer "how much will I owe?" before saving).
+      await tester.tap(find.text('Who?'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mary').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'US\$'), '150');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Mary will owe \$180 by'), findsOneWidget);
+
+      // Coins are rejected (SPEC \u00a70: whole dollars only).
+      await tester.enterText(find.widgetWithText(TextField, 'US\$'), '150.50');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save loans'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('whole dollars'), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'US\$'), '150');
+      await tester.pumpAndSettle();
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/loan_preview_sheet.png'),
+      );
+      await state.repo.db.close();
+    },
+  );
 }

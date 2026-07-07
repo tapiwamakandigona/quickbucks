@@ -24,20 +24,26 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Weekly payments')),
         body: const Center(
-            child: Text('No Saturdays in this cycle yet.',
-                style: TextStyle(fontSize: 17))),
+          child: Text(
+            'No Saturdays in this cycle yet.',
+            style: TextStyle(fontSize: 17),
+          ),
+        ),
       );
     }
     final selected = _selected ?? saturdays.first;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Weekly payments'), actions: [
-        IconButton(
-          icon: const Icon(Icons.done_all),
-          tooltip: 'Mark everyone paid',
-          onPressed: () => _tickEveryone(context, app, saturdays),
-        ),
-      ]),
+      appBar: AppBar(
+        title: const Text('Weekly payments'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: 'Mark everyone paid',
+            onPressed: () => _tickEveryone(context, app, saturdays),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           SizedBox(
@@ -48,18 +54,20 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
               itemCount: saturdays.length,
               itemBuilder: (_, i) {
                 final s = saturdays[i];
-                final done = app.members
-                    .every((m) => app.isTicked(m.id, s));
+                final done = app.members.every((m) => app.isTicked(m.id, s));
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: ChoiceChip(
-                    label: Text('${s.day}/${s.month}/${s.year}',
-                        style: done
-                            ? null
-                            : TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant)),
+                    label: Text(
+                      '${s.day}/${s.month}/${s.year}',
+                      style: done
+                          ? null
+                          : TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                    ),
                     selected: s == selected,
                     onSelected: (_) => setState(() => _selected = s),
                   ),
@@ -69,8 +77,10 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Text('Saturday ${satDate(selected)}',
-                style: Theme.of(context).textTheme.titleLarge),
+            child: Text(
+              'Saturday ${satDate(selected)}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
           ),
           Expanded(
             child: ListView(
@@ -80,34 +90,45 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                     value: app.isTicked(m.id, selected),
                     title: Text(m.name),
                     subtitle: Text(
-                        '×${m.multiplier} — ${money(m.multiplier * app.cycle!.weeklyUnitCents)}'),
+                      '×${m.multiplier} — ${money(m.multiplier * app.cycle!.weeklyUnitCents)}',
+                    ),
                     onChanged: (v) async {
                       final repo = app.repo;
                       try {
                         if (v == true) {
                           await repo.tickContribution(
-                              cycle: app.cycle!,
-                              member: m,
-                              saturday: selected);
+                            cycle: app.cycle!,
+                            member: m,
+                            saturday: selected,
+                          );
                           if (context.mounted) {
-                            showUndoNote(context, '${m.name} ticked ✓',
-                                () async {
-                              await repo.untickContribution(m.id, selected);
-                              await app.refresh();
-                            });
+                            showUndoNote(
+                              context,
+                              '${m.name} ticked ✓',
+                              () async {
+                                await repo.untickContribution(m.id, selected);
+                                await app.refresh();
+                              },
+                            );
                           }
                         } else {
-                          final ok = await confirmAction(context,
-                              title: 'Remove this payment?',
-                              message:
-                                  'Untick ${m.name} for ${prettyDate(selected)}?',
-                              yes: 'Untick');
+                          final ok = await confirmAction(
+                            context,
+                            title: 'Remove this payment?',
+                            message:
+                                'Untick ${m.name} for ${prettyDate(selected)}?',
+                            yes: 'Untick',
+                          );
                           if (!ok) return;
                           await repo.untickContribution(m.id, selected);
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          showNote(context, 'Could not save: ${friendlyError(e)}', error: true);
+                          showNote(
+                            context,
+                            'Could not save: ${friendlyError(e)}',
+                            error: true,
+                          );
                         }
                       }
                       await app.refresh();
@@ -124,7 +145,10 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
   /// "Mark everyone paid": ticks every member for every Saturday from the
   /// start up to today, skipping what is already ticked. Undo-able.
   Future<void> _tickEveryone(
-      BuildContext context, AppState app, List<DateTime> saturdays) async {
+    BuildContext context,
+    AppState app,
+    List<DateTime> saturdays,
+  ) async {
     final missing = saturdays
         .expand((s) => app.members.where((m) => !app.isTicked(m.id, s)))
         .length;
@@ -135,7 +159,8 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
     final ok = await confirmAction(
       context,
       title: 'Mark everyone paid?',
-      message: 'This ticks all members for every Saturday from the start '
+      message:
+          'This ticks all members for every Saturday from the start '
           'until today — $missing missing ${missing == 1 ? 'tick' : 'ticks'} '
           'will be added. Already-ticked weeks are not touched.',
       yes: 'Tick all $missing',
@@ -143,9 +168,10 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
     if (!ok || !context.mounted) return;
     try {
       final added = await app.repo.tickAllMissing(
-          cycle: app.cycle!,
-          members: app.members,
-          saturdays: saturdays);
+        cycle: app.cycle!,
+        members: app.members,
+        saturdays: saturdays,
+      );
       await app.refresh();
       if (context.mounted) {
         showUndoNote(context, '${added.length} ticks added ✓', () async {

@@ -106,13 +106,35 @@ void main() {
       expect(r1.newLoan.dueDate, day(2026, 9, 5));
 
       final r2 = rollover(r1.newLoan, [], day(2026, 9, 6), newLoanId: 'L3');
-      // L3: principal 14400, owes 17280, loan_date Sun 09-06, due:
+      // L3: principal 14400, 1.2 × $144 = $172.80 → $173 whole-dollar
+      // rounding (SPEC §0), loan_date Sun 09-06, due:
       // day30 = Tue 10-06 -> Sat 2026-10-10.
       expect(r2.newLoan.principalCents, 14400);
-      expect(r2.newLoan.owedCents, 17280);
+      expect(r2.newLoan.owedCents, 17300);
       expect(r2.newLoan.loanDate, day(2026, 9, 6));
       expect(r2.newLoan.dueDate, day(2026, 10, 10));
       expect(r2.newLoan.parentLoanId, 'L2');
+    });
+  });
+
+  group('validateLoanDate (SPEC 3.1, owner 2026-07-07: Saturdays only)', () {
+    test('a Saturday is accepted', () {
+      expect(() => validateLoanDate(day(2026, 7, 4)), returnsNormally);
+    });
+    test('any other weekday is rejected with a friendly message', () {
+      for (var d = 5; d <= 10; d++) {
+        expect(() => validateLoanDate(day(2026, 7, d)), throwsArgumentError);
+      }
+    });
+    test('rollover loans stay on their Sunday (rule kept as it was)', () {
+      final l1 = Loan(
+          id: 'L1',
+          memberId: 'm',
+          principalCents: 10000,
+          loanDate: day(2026, 7, 4)); // Sat 4 Jul, due Sat 8 Aug
+      final r = rollover(l1, [], day(2026, 8, 9), newLoanId: 'L2');
+      expect(isSunday(r.newLoan.loanDate), isTrue);
+      expect(r.newLoan.loanDate, day(2026, 8, 9));
     });
   });
 }

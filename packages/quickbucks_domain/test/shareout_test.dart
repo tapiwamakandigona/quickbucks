@@ -71,4 +71,38 @@ void main() {
       }
     });
   });
+
+  group('whole-dollar shares (SPEC \u00a70, 2026-07-07)', () {
+    test('whole-dollar pot gives whole-dollar shares that sum exactly', () {
+      // \$1,000 pot over multipliers 1/2/3 \u2192 \$167 / \$333 / \$500 (dollars,
+      // largest remainder), never \$166.67.
+      final shares =
+          largestRemainderSplit(100000, [1, 2, 3], quantumCents: 100);
+      expect(shares.every((s) => s % 100 == 0), isTrue);
+      expect(shares.reduce((a, b) => a + b), 100000);
+      expect(shares, [16700, 33300, 50000]);
+    });
+    test('computeShareOut uses dollar units when the pot is whole dollars', () {
+      final r = computeShareOut(
+        cashCents: 100000,
+        multipliers: {'a': 1, 'b': 2, 'c': 3},
+        outstandingByMember: {},
+      );
+      expect(r.lines.every((l) => l.shareCents % 100 == 0), isTrue);
+      expect(r.lines.fold(0, (s, l) => s + l.payoutCents), 100000);
+    });
+    test('legacy pot with coins falls back to cent-exact shares', () {
+      final r = computeShareOut(
+        cashCents: 100001,
+        multipliers: {'a': 1, 'b': 2},
+        outstandingByMember: {},
+      );
+      expect(r.lines.fold(0, (s, l) => s + l.shareCents), 100001);
+    });
+    test('quantum split rejects a pot that is not a multiple of the quantum',
+        () {
+      expect(() => largestRemainderSplit(150, [1, 2], quantumCents: 100),
+          throwsArgumentError);
+    });
+  });
 }

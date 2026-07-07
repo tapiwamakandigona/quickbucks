@@ -25,23 +25,30 @@ void main() {
     final db = AppDb(NativeDatabase.memory());
     final repo = Repo(db);
     await repo.createCycle(
-        name: 'R', startDate: domain.day(2026, 2, 7),
-        members: [MemberInput('Mary', 2)]);
+      name: 'R',
+      startDate: domain.day(2026, 2, 7),
+      members: [MemberInput('Mary', 2)],
+    );
     final cycle = (await repo.activeCycle())!;
     final member = (await repo.membersOf(cycle.id)).single;
     return (repo, cycle, member);
   }
 
-  test('undo payment restores outstanding and reopens a closed loan',
-      () async {
+  test('undo payment restores outstanding and reopens a closed loan', () async {
     final (repo, cycle, member) = await seed();
     await repo.takeLoan(
-        cycle: cycle, member: member, principalCents: 10000,
-        loanDate: domain.day(2026, 3, 4));
+      cycle: cycle,
+      member: member,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 3, 7),
+    ); // Saturday (SPEC 3.1)
     var loan = (await repo.loansOf(cycle.id)).single;
     // Pay in full -> closes the loan.
     final payId = await repo.recordPayment(
-        loan: loan, amountCents: 12000, paidOn: domain.day(2026, 3, 20));
+      loan: loan,
+      amountCents: 12000,
+      paidOn: domain.day(2026, 3, 20),
+    );
     loan = (await repo.loansOf(cycle.id)).single;
     expect(loan.status, 'paid');
     // Undo -> active again, full amount owed.
@@ -54,11 +61,17 @@ void main() {
   test('undo payment refused after rollover', () async {
     final (repo, cycle, member) = await seed();
     await repo.takeLoan(
-        cycle: cycle, member: member, principalCents: 10000,
-        loanDate: domain.day(2026, 3, 4));
+      cycle: cycle,
+      member: member,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 3, 7),
+    ); // Saturday (SPEC 3.1)
     var loan = (await repo.loansOf(cycle.id)).single;
     final payId = await repo.recordPayment(
-        loan: loan, amountCents: 5000, paidOn: domain.day(2026, 4, 1));
+      loan: loan,
+      amountCents: 5000,
+      paidOn: domain.day(2026, 4, 1),
+    );
     loan = (await repo.loansOf(cycle.id)).single;
     await repo.confirmRollover(cycle, loan);
     expect(() => repo.deletePayment(payId), throwsStateError);
@@ -67,17 +80,26 @@ void main() {
   test('undo loan only while untouched', () async {
     final (repo, cycle, member) = await seed();
     final id = await repo.takeLoan(
-        cycle: cycle, member: member, principalCents: 10000,
-        loanDate: domain.day(2026, 3, 4));
+      cycle: cycle,
+      member: member,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 3, 7),
+    ); // Saturday (SPEC 3.1)
     await repo.deleteLoan(id);
     expect(await repo.loansOf(cycle.id), isEmpty);
     // With a payment -> refused.
     final id2 = await repo.takeLoan(
-        cycle: cycle, member: member, principalCents: 10000,
-        loanDate: domain.day(2026, 3, 4));
+      cycle: cycle,
+      member: member,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 3, 7),
+    ); // Saturday (SPEC 3.1)
     final loan2 = (await repo.loansOf(cycle.id)).single;
     await repo.recordPayment(
-        loan: loan2, amountCents: 1000, paidOn: domain.day(2026, 3, 20));
+      loan: loan2,
+      amountCents: 1000,
+      paidOn: domain.day(2026, 3, 20),
+    );
     expect(() => repo.deleteLoan(id2), throwsStateError);
     // Rollover child -> refused.
     final loan2b = (await repo.loansOf(cycle.id)).single;

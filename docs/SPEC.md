@@ -10,6 +10,24 @@ dates** (no timezones/timestamps in business logic).
 
 ---
 
+## 0. Whole-dollar money (owner request 2026-07-07)
+
+The group works in whole dollars — "coins auto conversion to nearest dollar".
+
+- **Entered amounts** (contributions are already $10 × multiplier; loan
+  principals; repayments) must be **whole dollars**. The UI only accepts whole
+  numbers — no cents.
+- **Computed amounts** that would land on coins are **rounded to the nearest
+  dollar, half up**: the 20% interest total (`owed`) and each share-out share.
+  Example: borrow $23 → 1.2 × $23 = $27.60 → owes **$28**. ($27.40 would
+  round to $27; $27.50 rounds up to $28.)
+- Share-out splits are computed in **whole-dollar units** (largest-remainder on
+  dollars) whenever the pot is a whole-dollar amount, so every share and payout
+  is a whole dollar and `Σ payout == cash` still holds exactly.
+- On upgrade, `owed` on **open (active) loans** is recomputed with dollar
+  rounding; closed history is left untouched.
+- Amounts display without cents when they are whole ("$28", not "$28.00").
+
 ## 1. Cycle
 
 - A **cycle** is one full run of the savings group.
@@ -44,11 +62,20 @@ dates** (no timezones/timestamps in business logic).
 ## 3. Loans
 
 ### 3.1 Taking a loan
-- Any member may borrow **any amount** at **any date** during the cycle
+- Loans are handed out **only on Saturdays** (owner, 2026-07-07: "Loans can
+  only be taken on Saturdays") — the group meets on Saturdays. The app groups
+  loans by their Saturday and lets the treasurer enter **all of one Saturday's
+  loans in a single batch** (pick the Saturday once, then name + amount rows).
+  - This applies to loans the treasurer enters. **Rollover loans keep their
+    Sunday effective date** (SPEC 3.4 unchanged — owner confirmed 2026-07-07
+    "keep as it was").
+  - Historical loans entered during catch-up must also be Saturdays.
+- Any member may borrow **any amount** on any cycle Saturday
   (no cap — not by pool balance, not by savings).
 - A member may hold **multiple loans at once; each is fully independent**.
 - Flat interest: borrowing principal `P` means the member owes
-  **`owed = round_half_up(1.2 × P)`** (in cents).
+  **`owed = round_to_dollar_half_up(1.2 × P)`** (whole-dollar rule, §0;
+  before 2026-07-07 this was rounded to the cent).
 
 ### 3.2 Due date rule (corrected 2026-07-06)
 Loans are **month loans**, not 30-day loans (owner: "if you take on the 7th
@@ -129,8 +156,10 @@ payout_i = share_i − outstanding_i               (may be NEGATIVE)
 - A negative `payout_i` is shown as a **negative final balance** on the member's
   balance sheet (owner confirmed) — the member still owes the group that amount.
 - Sanity check the math: `Σ payout_i = cash_on_hand` (must hold to the cent).
-- **Rounding:** compute shares in exact cents using the largest-remainder method
-  so the shares sum exactly to the pot.
+- **Rounding:** largest-remainder split in **whole-dollar units** when the pot
+  is whole dollars (§0), falling back to cents for legacy pots with coins —
+  either way the shares sum exactly to the pot.
+
 
 ## 6. Records & PDF export
 
@@ -168,6 +197,8 @@ enter everything that already happened and then continue live. Therefore:
 
 ## 9. Out of scope (explicitly)
 
+- "End early without interest" share-out variant — proposed 2026-07-07,
+  owner removed it the same day ("remove the rule End-early without interest").
 - Fines/penalties for missed contributions (nobody misses).
 - Loan caps.
 - Editing multipliers mid-cycle.

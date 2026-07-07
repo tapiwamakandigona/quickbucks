@@ -26,24 +26,31 @@ void main() {
     final db = AppDb(NativeDatabase.memory());
     final repo = Repo(db);
     await repo.createCycle(
-        name: 'R1',
-        startDate: domain.day(2026, 2, 7),
-        members: [MemberInput('Mary', 3), MemberInput('Jane', 2)]);
+      name: 'R1',
+      startDate: domain.day(2026, 2, 7),
+      members: [MemberInput('Mary', 3), MemberInput('Jane', 2)],
+    );
     final cycle = (await repo.activeCycle())!;
     final members = await repo.membersOf(cycle.id);
     await repo.tickContribution(
-        cycle: cycle, member: members.first, saturday: domain.day(2026, 2, 7));
+      cycle: cycle,
+      member: members.first,
+      saturday: domain.day(2026, 2, 7),
+    );
     await repo.takeLoan(
-        cycle: cycle,
-        member: members.first,
-        principalCents: 10000,
-        loanDate: domain.day(2026, 3, 4));
+      cycle: cycle,
+      member: members.first,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 3, 7),
+    ); // Saturday (SPEC 3.1)
     final loan = (await repo.loansOf(cycle.id)).single;
     await repo.recordPayment(
-        loan: loan, amountCents: 4000, paidOn: domain.day(2026, 3, 20));
+      loan: loan,
+      amountCents: 4000,
+      paidOn: domain.day(2026, 3, 20),
+    );
 
-    final json =
-        backup.exportSnapshotJson(await backup.exportSnapshot(db));
+    final json = backup.exportSnapshotJson(await backup.exportSnapshot(db));
 
     final db2 = AppDb(NativeDatabase.memory());
     await backup.importSnapshot(db2, json);
@@ -60,10 +67,11 @@ void main() {
 
   test('garbage file is rejected, nothing imported', () async {
     final db = AppDb(NativeDatabase.memory());
-    expect(() => backup.importSnapshot(db, 'not json'),
-        throwsFormatException);
-    expect(() => backup.importSnapshot(db, '{"app":"other"}'),
-        throwsFormatException);
+    expect(() => backup.importSnapshot(db, 'not json'), throwsFormatException);
+    expect(
+      () => backup.importSnapshot(db, '{"app":"other"}'),
+      throwsFormatException,
+    );
     await db.close();
   });
 }

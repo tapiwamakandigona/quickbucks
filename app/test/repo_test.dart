@@ -52,69 +52,92 @@ void main() {
     await makeCycle();
     expect(
       () => repo.createCycle(
-          name: 'x',
-          startDate: domain.day(2026, 8, 1),
-          members: [MemberInput('A', 1)]),
+        name: 'x',
+        startDate: domain.day(2026, 8, 1),
+        members: [MemberInput('A', 1)],
+      ),
       throwsStateError,
     );
   });
 
-  test('contribution amount = weekly unit x multiplier; Saturdays only',
-      () async {
-    final (cycle, members) = await makeCycle();
-    final mary = members.firstWhere((m) => m.name == 'Mary');
-    await repo.tickContribution(
-        cycle: cycle, member: mary, saturday: domain.day(2026, 2, 7));
-    final rows = await repo.contributionsOf(cycle.id);
-    expect(rows.single.amountCents, 3000); // $10 x 3
-    expect(
-      () => repo.tickContribution(
-          cycle: cycle, member: mary, saturday: domain.day(2026, 2, 8)),
-      throwsArgumentError, // not a Saturday
-    );
-    // double-tick rejected by unique key
-    expect(
-      () => repo.tickContribution(
-          cycle: cycle, member: mary, saturday: domain.day(2026, 2, 7)),
-      throwsA(anything),
-    );
-    await repo.untickContribution(mary.id, domain.day(2026, 2, 7));
-    expect(await repo.contributionsOf(cycle.id), isEmpty);
-  });
+  test(
+    'contribution amount = weekly unit x multiplier; Saturdays only',
+    () async {
+      final (cycle, members) = await makeCycle();
+      final mary = members.firstWhere((m) => m.name == 'Mary');
+      await repo.tickContribution(
+        cycle: cycle,
+        member: mary,
+        saturday: domain.day(2026, 2, 7),
+      );
+      final rows = await repo.contributionsOf(cycle.id);
+      expect(rows.single.amountCents, 3000); // $10 x 3
+      expect(
+        () => repo.tickContribution(
+          cycle: cycle,
+          member: mary,
+          saturday: domain.day(2026, 2, 8),
+        ),
+        throwsArgumentError, // not a Saturday
+      );
+      // double-tick rejected by unique key
+      expect(
+        () => repo.tickContribution(
+          cycle: cycle,
+          member: mary,
+          saturday: domain.day(2026, 2, 7),
+        ),
+        throwsA(anything),
+      );
+      await repo.untickContribution(mary.id, domain.day(2026, 2, 7));
+      expect(await repo.contributionsOf(cycle.id), isEmpty);
+    },
+  );
 
   test('full Mary story through the database (SPEC 3.5)', () async {
     final (cycle, members) = await makeCycle();
     final mary = members.firstWhere((m) => m.name == 'Mary');
 
     final loanId = await repo.takeLoan(
-        cycle: cycle,
-        member: mary,
-        principalCents: 10000,
-        loanDate: domain.day(2026, 7, 1));
+      cycle: cycle,
+      member: mary,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 7, 4),
+    ); // Saturday (SPEC 3.1)
     var loans = await repo.loansOf(cycle.id);
     expect(loans.single.owedCents, 12000);
-    expect(loans.single.dueDate, '2026-08-01');
+    expect(loans.single.dueDate, '2026-08-08'); // 4 Aug is a Tue -> next Sat
 
     await repo.recordPayment(
-        loan: loans.single, amountCents: 5000, paidOn: domain.day(2026, 7, 20));
+      loan: loans.single,
+      amountCents: 5000,
+      paidOn: domain.day(2026, 7, 20),
+    );
     expect(await repo.outstandingOf(loans.single), 7000);
 
     // Not overdue on the due Saturday itself…
     expect(
-        await repo.overdueLoans(cycle.id, asOf: domain.day(2026, 8, 1)), isEmpty);
+      await repo.overdueLoans(cycle.id, asOf: domain.day(2026, 8, 8)),
+      isEmpty,
+    );
     // …overdue from the Sunday after.
-    final overdue =
-        await repo.overdueLoans(cycle.id, asOf: domain.day(2026, 8, 2));
+    final overdue = await repo.overdueLoans(
+      cycle.id,
+      asOf: domain.day(2026, 8, 9),
+    );
     expect(overdue.single.id, loanId);
 
-    final newId = await repo.confirmRollover(cycle, overdue.single,
-        asOf: domain.day(2026, 8, 20)); // confirmed late
+    final newId = await repo.confirmRollover(
+      cycle,
+      overdue.single,
+      asOf: domain.day(2026, 8, 20),
+    ); // confirmed late
     loans = await repo.loansOf(cycle.id);
     final child = loans.firstWhere((l) => l.id == newId);
     expect(child.principalCents, 7000);
     expect(child.owedCents, 8400);
-    expect(child.loanDate, '2026-08-02'); // historical Sunday
-    expect(child.dueDate, '2026-09-05');
+    expect(child.loanDate, '2026-08-09'); // historical Sunday
+    expect(child.dueDate, '2026-09-12'); // 9 Sep is a Wed -> next Sat
     expect(child.parentLoanId, loanId);
     expect(loans.firstWhere((l) => l.id == loanId).status, 'rolled_over');
   });
@@ -131,22 +154,26 @@ void main() {
     }
     // Mary borrows $100, pays $50, rolls over to $84 owed.
     await repo.takeLoan(
-        cycle: cycle,
-        member: mary,
-        principalCents: 10000,
-        loanDate: domain.day(2026, 7, 1));
+      cycle: cycle,
+      member: mary,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 7, 4),
+    ); // Saturday (SPEC 3.1)
     var loan = (await repo.loansOf(cycle.id)).single;
     await repo.recordPayment(
-        loan: loan, amountCents: 5000, paidOn: domain.day(2026, 7, 20));
+      loan: loan,
+      amountCents: 5000,
+      paidOn: domain.day(2026, 7, 20),
+    );
     loan = (await repo.loansOf(cycle.id)).single;
-    await repo.confirmRollover(cycle, loan, asOf: domain.day(2026, 8, 2));
+    await repo.confirmRollover(cycle, loan, asOf: domain.day(2026, 8, 9));
 
     final t = await repo.totals(cycle.id);
     expect(t.cashOnHandCents, 12000 + 5000 - 10000); // 7000
     expect(t.receivablesCents, 8400);
     expect(t.poolValueCents, 15400);
 
-    final so = await repo.endCycle(cycle, asOf: domain.day(2026, 8, 3));
+    final so = await repo.endCycle(cycle, asOf: domain.day(2026, 8, 10));
     expect(so.potCents, 15400);
     expect(so.cashCents, 7000);
     final (_, lines) = (await repo.shareOutOf(cycle.id))!;
@@ -166,83 +193,110 @@ void main() {
   test('payment exceeding outstanding is rejected at the repo layer', () async {
     final (cycle, members) = await makeCycle();
     await repo.takeLoan(
-        cycle: cycle,
-        member: members.first,
-        principalCents: 10000,
-        loanDate: domain.day(2026, 7, 1));
+      cycle: cycle,
+      member: members.first,
+      principalCents: 10000,
+      loanDate: domain.day(2026, 7, 4),
+    ); // Saturday (SPEC 3.1)
     final loan = (await repo.loansOf(cycle.id)).single;
     expect(
       () => repo.recordPayment(
-          loan: loan, amountCents: 12001, paidOn: domain.day(2026, 7, 2)),
+        loan: loan,
+        amountCents: 12001,
+        paidOn: domain.day(2026, 7, 2),
+      ),
       throwsArgumentError,
     );
     // exact payoff closes the loan
     await repo.recordPayment(
-        loan: loan, amountCents: 12000, paidOn: domain.day(2026, 7, 2));
+      loan: loan,
+      amountCents: 12000,
+      paidOn: domain.day(2026, 7, 2),
+    );
     expect((await repo.loansOf(cycle.id)).single.status, 'paid');
   });
 
   group('collection phase (owner rules 2026-07-06)', () {
-    test('no new loans; debts frozen; historical rollovers still offered',
-        () async {
-      final (cycle, members) = await makeCycle();
-      final mary = members.firstWhere((m) => m.name == 'Mary');
+    test(
+      'no new loans; debts frozen; historical rollovers still offered',
+      () async {
+        final (cycle, members) = await makeCycle();
+        final mary = members.firstWhere((m) => m.name == 'Mary');
 
-      // Loan due Sat 2026-06-13 (taken 2026-05-08: day30 = Sun 6/7 -> Sat 6/13).
-      await repo.takeLoan(
+        // Loan due Sat 2026-06-13 (taken Sat 2026-05-09: 9 Jun is a Tue ->
+        // next Sat 6/13).
+        await repo.takeLoan(
           cycle: cycle,
           member: mary,
           principalCents: 10000,
-          loanDate: domain.day(2026, 5, 8));
-      // Loan due after the end date: taken 2026-06-01, day30 = Wed 7/1 -> Sat 7/4.
-      await repo.takeLoan(
+          loanDate: domain.day(2026, 5, 9),
+        );
+        // Loan due after the end date: taken Sat 2026-06-06, 6 Jul is a Mon
+        // -> Sat 7/11.
+        await repo.takeLoan(
           cycle: cycle,
           member: mary,
           principalCents: 5000,
-          loanDate: domain.day(2026, 6, 1));
+          loanDate: domain.day(2026, 6, 6),
+        );
 
-      // Contributions end Sat 2026-06-20 -> collection phase.
-      await repo.endContributions(cycle, asOf: domain.day(2026, 6, 20));
-      final collecting = (await repo.activeCycle())!;
-      expect(collecting.status, 'collecting');
+        // Contributions end Sat 2026-06-20 -> collection phase.
+        await repo.endContributions(cycle, asOf: domain.day(2026, 6, 20));
+        final collecting = (await repo.activeCycle())!;
+        expect(collecting.status, 'collecting');
 
-      // No new loans now.
-      expect(
-        () => repo.takeLoan(
+        // No new loans now.
+        expect(
+          () => repo.takeLoan(
             cycle: collecting,
             member: mary,
             principalCents: 1000,
-            loanDate: domain.day(2026, 6, 25)),
-        throwsStateError,
-      );
+            loanDate: domain.day(2026, 6, 27),
+          ), // a Saturday
+          throwsStateError,
+        );
 
-      // Even far in the future, only the loan whose rollover Sunday
-      // (2026-06-14) fell before the end date is offered; the one due
-      // 2026-07-04 is frozen — no new 20%.
-      final overdue = await repo.overdueLoans(collecting.id,
-          asOf: domain.day(2026, 9, 1));
-      expect(overdue.length, 1);
-      expect(overdue.single.dueDate, '2026-06-13');
+        // Even far in the future, only the loan whose rollover Sunday
+        // (2026-06-14) fell before the end date is offered; the one due
+        // 2026-07-11 is frozen — no new 20%.
+        final overdue = await repo.overdueLoans(
+          collecting.id,
+          asOf: domain.day(2026, 9, 1),
+        );
+        expect(overdue.length, 1);
+        expect(overdue.single.dueDate, '2026-06-13');
 
-      // Its rollover uses the historical Sunday, as during the active phase.
-      final newId = await repo.confirmRollover(collecting, overdue.single,
-          asOf: domain.day(2026, 9, 1));
-      final child = (await repo.loansOf(collecting.id))
-          .firstWhere((l) => l.id == newId);
-      expect(child.loanDate, '2026-06-14');
+        // Its rollover uses the historical Sunday, as during the active phase.
+        final newId = await repo.confirmRollover(
+          collecting,
+          overdue.single,
+          asOf: domain.day(2026, 9, 1),
+        );
+        final child = (await repo.loansOf(
+          collecting.id,
+        )).firstWhere((l) => l.id == newId);
+        expect(child.loanDate, '2026-06-14');
 
-      // The frozen loan's owed amount never changes; payments reduce it.
-      final frozen = (await repo.loansOf(collecting.id))
-          .firstWhere((l) => l.dueDate == '2026-07-04');
-      expect(frozen.owedCents, 6000); // $50 + 20%, fixed
-      await repo.recordPayment(
-          loan: frozen, amountCents: 2000, paidOn: domain.day(2026, 8, 15));
-      expect(await repo.outstandingOf(frozen), 4000);
+        // The frozen loan's owed amount never changes; payments reduce it.
+        final frozen = (await repo.loansOf(
+          collecting.id,
+        )).firstWhere((l) => l.dueDate == '2026-07-11');
+        expect(frozen.owedCents, 6000); // $50 + 20%, fixed
+        await repo.recordPayment(
+          loan: frozen,
+          amountCents: 2000,
+          paidOn: domain.day(2026, 8, 15),
+        );
+        expect(await repo.outstandingOf(frozen), 4000);
 
-      // Share-out still settles remaining debts against shares.
-      final so = await repo.endCycle(collecting, asOf: domain.day(2026, 9, 5));
-      expect(so.cashCents, isNotNull);
-    });
+        // Share-out still settles remaining debts against shares.
+        final so = await repo.endCycle(
+          collecting,
+          asOf: domain.day(2026, 9, 5),
+        );
+        expect(so.cashCents, isNotNull);
+      },
+    );
 
     test('editable start date', () async {
       final (cycle, _) = await makeCycle();

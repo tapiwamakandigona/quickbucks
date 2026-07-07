@@ -30,8 +30,9 @@ void main() {
     }
   });
 
-  testWidgets('mark-everyone-paid fills gaps, skips existing, undo reverts',
-      (tester) async {
+  testWidgets('mark-everyone-paid fills gaps, skips existing, undo reverts', (
+    tester,
+  ) async {
     final db = AppDb(NativeDatabase.memory());
     final repo = Repo(db);
     await repo.createCycle(
@@ -45,15 +46,22 @@ void main() {
     final mary = members.firstWhere((m) => m.name == 'Mary');
     // Pre-existing tick: Mary on Feb 7. 5 of 6 cells are missing.
     await repo.tickContribution(
-        cycle: cycle, member: mary, saturday: domain.day(2026, 2, 7));
+      cycle: cycle,
+      member: mary,
+      saturday: domain.day(2026, 2, 7),
+    );
     final state = AppState(repo);
     await state.refresh();
 
-    await tester.pumpWidget(ChangeNotifierProvider.value(
-      value: state,
-      child: MaterialApp(
-          theme: quickbucksTheme(), home: const ContributionsScreen()),
-    ));
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: state,
+        child: MaterialApp(
+          theme: quickbucksTheme(),
+          home: const ContributionsScreen(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.done_all));
@@ -65,10 +73,11 @@ void main() {
     expect(state.contributions.length, 6); // everyone, every Saturday
     // Skipped the existing one: Mary Feb 7 still exists exactly once.
     expect(
-        state.contributions
-            .where((c) => c.memberId == mary.id && c.saturday == '2026-02-07')
-            .length,
-        1);
+      state.contributions
+          .where((c) => c.memberId == mary.id && c.saturday == '2026-02-07')
+          .length,
+      1,
+    );
 
     // Undo removes only the 5 it added.
     await tester.tap(find.text('Undo'));

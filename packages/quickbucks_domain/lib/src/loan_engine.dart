@@ -84,6 +84,16 @@ int outstanding(Loan loan, Iterable<LoanPayment> payments) {
   return owed;
 }
 
+/// New loans are handed out only on Saturdays (SPEC 3.1, owner 2026-07-07).
+/// Rollover loans are exempt — their effective date is always the Sunday
+/// after the parent's due Saturday (SPEC 3.4, "keep as it was").
+void validateLoanDate(DateTime loanDate) {
+  if (!isSaturday(loanDate)) {
+    throw ArgumentError('Loans are given out on Saturdays — '
+        'pick the Saturday the money was handed over');
+  }
+}
+
 /// Validates a prospective payment (SPEC 3.3): any amount, any date, but it
 /// may not exceed what is still outstanding.
 void validatePayment(

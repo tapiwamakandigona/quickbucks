@@ -42,13 +42,17 @@ class _LockScreenState extends State<LockScreen> {
           children: [
             Icon(Icons.lock, size: 56, color: scheme.primary),
             const SizedBox(height: 12),
-            const Text('Enter your PIN',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+            const Text(
+              'Enter your PIN',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
             if (_wrong)
               const Padding(
                 padding: EdgeInsets.only(top: 8),
-                child: Text('Wrong PIN — try again',
-                    style: TextStyle(color: Colors.red, fontSize: 16)),
+                child: Text(
+                  'Wrong PIN — try again',
+                  style: TextStyle(color: Colors.red, fontSize: 16),
+                ),
               ),
             const SizedBox(height: 16),
             Row(
@@ -84,19 +88,27 @@ class _LockScreenState extends State<LockScreen> {
                             : OutlinedButton(
                                 onPressed: () {
                                   if (ch == '⌫') {
-                                    setState(() => _entered = _entered.isEmpty
-                                        ? ''
-                                        : _entered.substring(
-                                            0, _entered.length - 1));
+                                    setState(
+                                      () => _entered = _entered.isEmpty
+                                          ? ''
+                                          : _entered.substring(
+                                              0,
+                                              _entered.length - 1,
+                                            ),
+                                    );
                                   } else {
                                     _tap(ch);
                                   }
                                 },
                                 child: ch == '⌫'
-                                    ? const Icon(Icons.backspace_outlined,
-                                        size: 28)
-                                    : Text(ch,
-                                        style: const TextStyle(fontSize: 26)),
+                                    ? const Icon(
+                                        Icons.backspace_outlined,
+                                        size: 28,
+                                      )
+                                    : Text(
+                                        ch,
+                                        style: const TextStyle(fontSize: 26),
+                                      ),
                               ),
                       ),
                     ),
@@ -149,8 +161,10 @@ Future<void> managePin(BuildContext context) async {
   }
   await pin.setPin(newPin);
   if (context.mounted) {
-    showNote(context,
-        'PIN set ✓ — don\'t forget it! Without it the app cannot be opened.');
+    showNote(
+      context,
+      'PIN set ✓ — don\'t forget it! Without it the app cannot be opened.',
+    );
   }
 }
 
@@ -160,43 +174,48 @@ Future<String?> _askPin(BuildContext context, String title) async {
     context: context,
     builder: (ctx) {
       String? error;
-      return StatefulBuilder(builder: (ctx, setDialog) {
-        return AlertDialog(
-          title: Text(title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: ctrl,
-                autofocus: true,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                style: const TextStyle(fontSize: 24, letterSpacing: 8),
-              ),
-              if (error != null)
-                Text(error!,
-                    style: const TextStyle(color: Colors.red, fontSize: 15)),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () {
-                final v = ctrl.text.trim();
-                if (v.length < 4 || int.tryParse(v) == null) {
-                  setDialog(() => error = 'The PIN must be 4-6 numbers');
-                  return;
-                }
-                Navigator.pop(ctx, v);
-              },
-              child: const Text('OK'),
+      return StatefulBuilder(
+        builder: (ctx, setDialog) {
+          return AlertDialog(
+            title: Text(title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  style: const TextStyle(fontSize: 24, letterSpacing: 8),
+                ),
+                if (error != null)
+                  Text(
+                    error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 15),
+                  ),
+              ],
             ),
-          ],
-        );
-      });
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final v = ctrl.text.trim();
+                  if (v.length < 4 || int.tryParse(v) == null) {
+                    setDialog(() => error = 'The PIN must be 4-6 numbers');
+                    return;
+                  }
+                  Navigator.pop(ctx, v);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     },
   );
 }

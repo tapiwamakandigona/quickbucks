@@ -86,3 +86,13 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Month-end clamping: 31 Jan → 28/29 Feb; leap-year and December-wrap tests; 800-day property test (due date is always a Saturday, 28–38 days out)
 - ☑ DB migration (schema v1 → v2): every stored loan's due date is recomputed with the new rule on first launch after upgrade (test/migration_test.dart)
 - ☑ 20% flat interest and rollover behaviour unchanged; SPEC 3.2 rewritten with new examples table
+
+## v1.4.0 (2026-07-07) — whole dollars + Saturday loans book (owner requests)
+- ☑ Whole-dollar money (SPEC §0): interest rounds to the nearest dollar ($23 → owes $28), entry fields accept whole dollars only, money displays without ".00"
+- ☑ Share-out splits in whole-dollar units (largest remainder on dollars); Σpayout == cash still exact
+- ☑ DB migration v2 → v3: `owed` on open loans recomputed with dollar rounding (closed history untouched)
+- ☑ Loans only on Saturdays (SPEC 3.1): new "Saturday loans" book — pick the Saturday once (big chips: This/Last Saturday, calendar locked to Saturdays), enter every member + amount for that day, one confirm, one undo
+- ☑ Open-loans list grouped by hand-out Saturday
+- ☑ Payment sheet: date chips (Due Saturday / Today / Another day), whole-dollar amounts, "Pay all"
+- ☑ Rollover rule unchanged (owner: "keep as it was" — Sunday after the due Saturday)
+- ✗ "End early without interest" — requested then removed by owner the same day (now listed under SPEC §9 out-of-scope)

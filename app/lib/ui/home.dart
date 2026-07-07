@@ -33,8 +33,10 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             tooltip: 'Cycle settings',
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const CycleSettingsScreen())),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CycleSettingsScreen()),
+            ),
           ),
         ],
       ),
@@ -62,10 +64,15 @@ class HomeScreen extends StatelessWidget {
                 child: ListTile(
                   leading: const Icon(Icons.warning_amber, color: kDanger),
                   title: Text(
-                      '${app.overdue.length} loan${app.overdue.length == 1 ? '' : 's'} past the due Saturday'),
-                  subtitle: const Text('Tap to review — record payments or roll over'),
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const LoansScreen())),
+                    '${app.overdue.length} loan${app.overdue.length == 1 ? '' : 's'} past the due Saturday',
+                  ),
+                  subtitle: const Text(
+                    'Tap to review — record payments or roll over',
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoansScreen()),
+                  ),
                 ),
               ),
             Card(
@@ -76,17 +83,20 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: BigStat(
-                            label: 'Cash in the box',
-                            value: money(totals?.cashOnHandCents ?? 0)),
+                          label: 'Cash in the box',
+                          value: money(totals?.cashOnHandCents ?? 0),
+                        ),
                       ),
                       VerticalDivider(
-                          width: QSpace.x6,
-                          color: Theme.of(context).colorScheme.outlineVariant),
+                        width: QSpace.x6,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                       Expanded(
                         child: BigStat(
-                            label: 'Pool with loans',
-                            value: money(totals?.poolValueCents ?? 0),
-                            color: Theme.of(context).colorScheme.primary),
+                          label: 'Pool with loans',
+                          value: money(totals?.poolValueCents ?? 0),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -99,12 +109,15 @@ class HomeScreen extends StatelessWidget {
                   leading: const Icon(Icons.event_available, size: 32),
                   title: Text('Saturday ${satDate(thisSat)}'),
                   subtitle: Text(
-                      '$tickedCount of ${app.members.length} members paid'),
+                    '$tickedCount of ${app.members.length} members paid',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const ContributionsScreen())),
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ContributionsScreen(),
+                    ),
+                  ),
                 ),
               ),
             Card(
@@ -113,8 +126,10 @@ class HomeScreen extends StatelessWidget {
                 title: const Text('Loans'),
                 subtitle: Text(_loanSummary(app)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const LoansScreen())),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoansScreen()),
+                ),
               ),
             ),
             Card(
@@ -124,9 +139,11 @@ class HomeScreen extends StatelessWidget {
                 subtitle: const Text('The Saturday book — tick who paid'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ContributionsScreen())),
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ContributionsScreen(),
+                  ),
+                ),
               ),
             ),
             Card(
@@ -134,7 +151,8 @@ class HomeScreen extends StatelessWidget {
                 leading: const Icon(Icons.groups, size: 32),
                 title: const Text('Members'),
                 subtitle: Text(
-                    '${app.members.length} members · ${app.members.fold(0, (s, m) => s + m.multiplier)} shares'),
+                  '${app.members.length} members · ${app.members.fold(0, (s, m) => s + m.multiplier)} shares',
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showMembers(context, app),
               ),
@@ -148,8 +166,10 @@ class HomeScreen extends StatelessWidget {
   String _loanSummary(AppState app) {
     final active = app.loans.where((l) => l.status == 'active').toList();
     if (active.isEmpty) return 'No open loans';
-    final owed =
-        active.fold(0, (s, l) => s + (app.outstandingByLoan[l.id] ?? 0));
+    final owed = active.fold(
+      0,
+      (s, l) => s + (app.outstandingByLoan[l.id] ?? 0),
+    );
     return '${active.length} open · ${money(owed)} still owed';
   }
 
@@ -164,14 +184,17 @@ class HomeScreen extends StatelessWidget {
               leading: CircleAvatar(child: Text(m.name.characters.first)),
               title: Text(m.name),
               subtitle: Text(
-                  '×${m.multiplier} — pays ${money(m.multiplier * app.cycle!.weeklyUnitCents)} each Saturday'),
+                '×${m.multiplier} — pays ${money(m.multiplier * app.cycle!.weeklyUnitCents)} each Saturday',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => MemberDetailScreen(member: m)));
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberDetailScreen(member: m),
+                  ),
+                );
               },
             ),
         ],

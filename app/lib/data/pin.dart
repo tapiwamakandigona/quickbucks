@@ -19,8 +19,9 @@ Future<bool> pinIsSet() async =>
 
 Future<void> setPin(String pin) async {
   final prefs = await SharedPreferences.getInstance();
-  final salt =
-      base64Encode(List<int>.generate(16, (_) => Random.secure().nextInt(256)));
+  final salt = base64Encode(
+    List<int>.generate(16, (_) => Random.secure().nextInt(256)),
+  );
   await prefs.setString(_kSalt, salt);
   await prefs.setString(_kHash, _hash(pin, salt));
 }
