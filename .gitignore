@@ -10,3 +10,4 @@ key.properties
 **/.flutter-plugins*
 **/*.iml
 .idea/
+app/test/failures/
