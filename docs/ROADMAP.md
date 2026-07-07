@@ -96,3 +96,10 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Payment sheet: date chips (Due Saturday / Today / Another day), whole-dollar amounts, "Pay all"
 - ☑ Rollover rule unchanged (owner: "keep as it was" — Sunday after the due Saturday)
 - ✗ "End early without interest" — requested then removed by owner the same day (now listed under SPEC §9 out-of-scope)
+
+## v1.4.1 (2026-07-07) — loans book tabs (owner request)
+- ☑ Loans screen split into two tabs — "To pay" and "Paid" — the same way weekly payments and loans are separate pages
+- ☑ Each Saturday's loans open with a bold gold banner (calendar icon, "Saturday {date}", count + total handed out) so it is always clear WHEN a loan was taken; used on both tabs
+- ☑ Overdue loans stay pinned at the top of "To pay"
+- ☑ 3-button navigation bar support (owner's mother's phone): bottom sheets and buttons padded so the system bar never covers them (payment sheet, members sheet, PIN sheet)
+- ☑ New golden: loans_paid.png; tab labels use theme fonts so goldens render correctly
