@@ -30,20 +30,18 @@ void main() {
   state.refresh().then((_) {
     // Keep the weekly reminder scheduled while payments run; clear it after.
     reminder.syncReminder(
-        contributionsRunning: state.cycle?.status == 'active');
+      contributionsRunning: state.cycle?.status == 'active',
+    );
   });
   if (_sentryDsn.isEmpty) {
     runApp(QuickBucksApp(state: state));
     return;
   }
-  SentryFlutter.init(
-    (options) {
-      options.dsn = _sentryDsn;
-      options.tracesSampleRate = 0; // crashes only, no performance tracing
-      options.sendDefaultPii = false;
-    },
-    appRunner: () => runApp(QuickBucksApp(state: state)),
-  );
+  SentryFlutter.init((options) {
+    options.dsn = _sentryDsn;
+    options.tracesSampleRate = 0; // crashes only, no performance tracing
+    options.sendDefaultPii = false;
+  }, appRunner: () => runApp(QuickBucksApp(state: state)));
 }
 
 class QuickBucksApp extends StatelessWidget {

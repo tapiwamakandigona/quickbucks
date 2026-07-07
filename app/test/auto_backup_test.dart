@@ -24,31 +24,34 @@ void main() {
     }
   });
 
-  test('writeAutoBackup writes today, lists newest first, prunes extras',
-      () async {
-    final state = await seedAppState();
-    final dir = Directory.systemTemp.createTempSync('qb_auto');
-    addTearDown(() => dir.deleteSync(recursive: true));
+  test(
+    'writeAutoBackup writes today, lists newest first, prunes extras',
+    () async {
+      final state = await seedAppState();
+      final dir = Directory.systemTemp.createTempSync('qb_auto');
+      addTearDown(() => dir.deleteSync(recursive: true));
 
-    // Fake 9 old daily backups.
-    for (var d = 1; d <= 9; d++) {
-      File('${dir.path}/${autoBackupPrefix}2026-06-${d.toString().padLeft(2, '0')}.json')
-          .writeAsStringSync('{}');
-    }
-    final written = await writeAutoBackup(state.repo.db, dir);
-    expect(written, isNotNull);
-    final files = listAutoBackups(dir);
-    expect(files.length, autoBackupKeep);
-    expect(files.first.path, written!.path); // today's is newest
-    // Oldest were pruned.
-    expect(files.any((f) => f.path.contains('2026-06-01')), isFalse);
+      // Fake 9 old daily backups.
+      for (var d = 1; d <= 9; d++) {
+        File(
+          '${dir.path}/${autoBackupPrefix}2026-06-${d.toString().padLeft(2, '0')}.json',
+        ).writeAsStringSync('{}');
+      }
+      final written = await writeAutoBackup(state.repo.db, dir);
+      expect(written, isNotNull);
+      final files = listAutoBackups(dir);
+      expect(files.length, autoBackupKeep);
+      expect(files.first.path, written!.path); // today's is newest
+      // Oldest were pruned.
+      expect(files.any((f) => f.path.contains('2026-06-01')), isFalse);
 
-    // Round-trip: restoring today's auto backup reproduces the ledger.
-    final fresh = await seedAppState();
-    await importSnapshot(fresh.repo.db, await written.readAsString());
-    await fresh.refresh();
-    expect(fresh.members.length, 10);
-    expect(fresh.totals!.cashOnHandCents, 290000);
-    expect(fresh.totals!.poolValueCents, 327000);
-  });
+      // Round-trip: restoring today's auto backup reproduces the ledger.
+      final fresh = await seedAppState();
+      await importSnapshot(fresh.repo.db, await written.readAsString());
+      await fresh.refresh();
+      expect(fresh.members.length, 10);
+      expect(fresh.totals!.cashOnHandCents, 290000);
+      expect(fresh.totals!.poolValueCents, 327000);
+    },
+  );
 }

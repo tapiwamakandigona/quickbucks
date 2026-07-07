@@ -26,11 +26,11 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
   bool _saving = false;
 
   Future<DateTime?> _pickDate(DateTime initial) => showDatePicker(
-        context: context,
-        initialDate: initial,
-        firstDate: DateTime(2015),
-        lastDate: DateTime(2040),
-      ).then((d) => d == null ? null : domain.day(d.year, d.month, d.day));
+    context: context,
+    initialDate: initial,
+    firstDate: DateTime(2015),
+    lastDate: DateTime(2040),
+  ).then((d) => d == null ? null : domain.day(d.year, d.month, d.day));
 
   Future<void> _save() async {
     final members = <MemberInput>[];
@@ -43,8 +43,7 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
       showNote(context, 'Add at least one member', error: true);
       return;
     }
-    final totalWeekly =
-        members.fold(0, (s, m) => s + m.multiplier) * 1000;
+    final totalWeekly = members.fold(0, (s, m) => s + m.multiplier) * 1000;
     final ok = await confirmAction(
       context,
       title: 'Start this cycle?',
@@ -59,16 +58,18 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
     setState(() => _saving = true);
     try {
       await context.read<AppState>().repo.createCycle(
-            name: _nameCtrl.text.trim().isEmpty
-                ? 'Savings round'
-                : _nameCtrl.text.trim(),
-            startDate: _startDate,
-            endDate: _endDate,
-            members: members,
-          );
+        name: _nameCtrl.text.trim().isEmpty
+            ? 'Savings round'
+            : _nameCtrl.text.trim(),
+        startDate: _startDate,
+        endDate: _endDate,
+        members: members,
+      );
       if (mounted) await context.read<AppState>().refresh();
     } catch (e) {
-      if (mounted) showNote(context, 'Could not start: ${friendlyError(e)}', error: true);
+      if (mounted) {
+        showNote(context, 'Could not start: ${friendlyError(e)}', error: true);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -94,8 +95,9 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
           const SizedBox(height: 12),
           ListTile(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: const BorderSide(color: Colors.black26)),
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: Colors.black26),
+            ),
             title: const Text('Start date'),
             subtitle: Text(prettyDate(_startDate)),
             trailing: const Icon(Icons.edit_calendar),
@@ -107,12 +109,15 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
           const SizedBox(height: 12),
           ListTile(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: const BorderSide(color: Colors.black26)),
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: Colors.black26),
+            ),
             title: const Text('End date (optional)'),
-            subtitle: Text(_endDate == null
-                ? 'Not set — you can set or change it any time'
-                : prettyDate(_endDate!)),
+            subtitle: Text(
+              _endDate == null
+                  ? 'Not set — you can set or change it any time'
+                  : prettyDate(_endDate!),
+            ),
             trailing: const Icon(Icons.edit_calendar),
             onTap: () async {
               final d = await _pickDate(_endDate ?? _startDate);
@@ -163,7 +168,7 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
             value: row.multiplier,
             items: [
               for (var m = 1; m <= 20; m++)
-                DropdownMenuItem(value: m, child: Text('×$m'))
+                DropdownMenuItem(value: m, child: Text('×$m')),
             ],
             onChanged: (v) => setState(() => row.multiplier = v ?? 1),
           ),

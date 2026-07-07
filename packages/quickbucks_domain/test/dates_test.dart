@@ -29,8 +29,7 @@ void main() {
     test('December wraps to January of the next year', () {
       expect(sameDateNextMonth(day(2026, 12, 15)), day(2027, 1, 15));
     });
-    test('due date is always a Saturday within a week after the month day',
-        () {
+    test('due date is always a Saturday within a week after the month day', () {
       for (var offset = 0; offset < 800; offset++) {
         final loanDate = addDays(day(2026, 1, 1), offset);
         final monthDay = sameDateNextMonth(loanDate);

@@ -39,7 +39,7 @@ class AppState extends ChangeNotifier {
       loans = await repo.loansOf(cycle!.id);
       outstandingByLoan = {
         for (final l in loans)
-          if (l.status == 'active') l.id: await repo.outstandingOf(l)
+          if (l.status == 'active') l.id: await repo.outstandingOf(l),
       };
       overdue = await repo.overdueLoans(cycle!.id);
       totals = await repo.totals(cycle!.id);
@@ -74,5 +74,6 @@ class AppState extends ChangeNotifier {
   }
 
   bool isTicked(String memberId, DateTime saturday) => contributions.any(
-      (c) => c.memberId == memberId && c.saturday == iso(saturday));
+    (c) => c.memberId == memberId && c.saturday == iso(saturday),
+  );
 }

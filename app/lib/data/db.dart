@@ -14,7 +14,8 @@ class Cycles extends Table {
   TextColumn get endDate => text().nullable()(); // editable while active
   TextColumn get status => text().withDefault(const Constant('active'))();
   TextColumn get endedOn => text().nullable()();
-  IntColumn get weeklyUnitCents => integer().withDefault(const Constant(1000))();
+  IntColumn get weeklyUnitCents =>
+      integer().withDefault(const Constant(1000))();
   IntColumn get interestPct => integer().withDefault(const Constant(20))();
 
   @override
@@ -44,8 +45,8 @@ class Contributions extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {memberId, saturday}
-      ];
+    {memberId, saturday},
+  ];
 }
 
 class Loans extends Table {
@@ -99,39 +100,69 @@ class ShareOutLines extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [
-  Cycles,
-  Members,
-  Contributions,
-  Loans,
-  LoanPayments,
-  ShareOuts,
-  ShareOutLines,
-])
+@DriftDatabase(
+  tables: [
+    Cycles,
+    Members,
+    Contributions,
+    Loans,
+    LoanPayments,
+    ShareOuts,
+    ShareOutLines,
+  ],
+)
 class AppDb extends _$AppDb {
   AppDb(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            // v1.3.0: the due-date rule changed from "loan_date + 30 days
-            // rolled to Saturday" to "same date next month, clamped, rolled
-            // to Saturday" (owner correction 2026-07-06, SPEC 3.2).
-            // Recompute every stored due date from its loan date.
-            String pad(int n) => n.toString().padLeft(2, '0');
-            final rows = await select(loans).get();
-            for (final l in rows) {
-              final p = l.loanDate.split('-').map(int.parse).toList();
-              final due = domain.dueDateFor(DateTime.utc(p[0], p[1], p[2]));
-              final dueIso = "${due.year}-${pad(due.month)}-${pad(due.day)}";
-              await (update(loans)..where((t) => t.id.equals(l.id)))
-                  .write(LoansCompanion(dueDate: Value(dueIso)));
-            }
-          }
-        },
-      );
+    onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        // 2026-07-07 (SPEC §0): whole-dollar money. Recompute `owed` on
+        // OPEN loans with nearest-dollar rounding; closed history stays
+        // untouched. If payments already exceed the rounded figure the
+        // loan is settled at what was actually paid (never negative).
+        final rows = await (select(
+          loans,
+        )..where((l) => l.status.equals('active'))).get();
+        for (final l in rows) {
+          var owed = domain.roundToDollarHalfUp(l.owedCents);
+          final paid =
+              await (selectOnly(loanPayments)
+                    ..addColumns([loanPayments.amountCents.sum()])
+                    ..where(loanPayments.loanId.equals(l.id)))
+                  .map((r) => r.read(loanPayments.amountCents.sum()) ?? 0)
+                  .getSingle();
+          if (paid >= owed) owed = paid; // never let outstanding go negative
+          if (owed == l.owedCents) continue;
+          await (update(loans)..where((t) => t.id.equals(l.id))).write(
+            LoansCompanion(
+              owedCents: Value(owed),
+              // Fully covered by rounding? Then it is paid off.
+              status: paid == owed ? const Value('paid') : const Value.absent(),
+            ),
+          );
+        }
+      }
+      if (from < 2) {
+        // v1.3.0: the due-date rule changed from "loan_date + 30 days
+        // rolled to Saturday" to "same date next month, clamped, rolled
+        // to Saturday" (owner correction 2026-07-06, SPEC 3.2).
+        // Recompute every stored due date from its loan date.
+        String pad(int n) => n.toString().padLeft(2, '0');
+        final rows = await select(loans).get();
+        for (final l in rows) {
+          final p = l.loanDate.split('-').map(int.parse).toList();
+          final due = domain.dueDateFor(DateTime.utc(p[0], p[1], p[2]));
+          final dueIso = "${due.year}-${pad(due.month)}-${pad(due.day)}";
+          await (update(loans)..where((t) => t.id.equals(l.id))).write(
+            LoansCompanion(dueDate: Value(dueIso)),
+          );
+        }
+      }
+    },
+  );
 }

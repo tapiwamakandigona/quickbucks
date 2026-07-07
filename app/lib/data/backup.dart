@@ -8,35 +8,30 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-
 import 'db.dart';
 
 const backupVersion = 1;
 
 Future<Map<String, dynamic>> exportSnapshot(AppDb db) async => {
-      'app': 'quickbucks',
-      'version': backupVersion,
-      'exportedAt': DateTime.now().toIso8601String(),
-      'cycles': [
-        for (final r in await db.select(db.cycles).get()) r.toJson()
-      ],
-      'members': [
-        for (final r in await db.select(db.members).get()) r.toJson()
-      ],
-      'contributions': [
-        for (final r in await db.select(db.contributions).get()) r.toJson()
-      ],
-      'loans': [for (final r in await db.select(db.loans).get()) r.toJson()],
-      'loanPayments': [
-        for (final r in await db.select(db.loanPayments).get()) r.toJson()
-      ],
-      'shareOuts': [
-        for (final r in await db.select(db.shareOuts).get()) r.toJson()
-      ],
-      'shareOutLines': [
-        for (final r in await db.select(db.shareOutLines).get()) r.toJson()
-      ],
-    };
+  'app': 'quickbucks',
+  'version': backupVersion,
+  'exportedAt': DateTime.now().toIso8601String(),
+  'cycles': [for (final r in await db.select(db.cycles).get()) r.toJson()],
+  'members': [for (final r in await db.select(db.members).get()) r.toJson()],
+  'contributions': [
+    for (final r in await db.select(db.contributions).get()) r.toJson(),
+  ],
+  'loans': [for (final r in await db.select(db.loans).get()) r.toJson()],
+  'loanPayments': [
+    for (final r in await db.select(db.loanPayments).get()) r.toJson(),
+  ],
+  'shareOuts': [
+    for (final r in await db.select(db.shareOuts).get()) r.toJson(),
+  ],
+  'shareOutLines': [
+    for (final r in await db.select(db.shareOutLines).get()) r.toJson(),
+  ],
+};
 
 String exportSnapshotJson(Map<String, dynamic> snapshot) =>
     const JsonEncoder.withIndent('  ').convert(snapshot);
@@ -55,12 +50,13 @@ Future<void> importSnapshot(AppDb db, String jsonText) async {
   }
   if (data['version'] is! int || (data['version'] as int) > backupVersion) {
     throw const FormatException(
-        'This backup is from a newer QuickBucks. Update the app first.');
+      'This backup is from a newer QuickBucks. Update the app first.',
+    );
   }
   List<Map<String, dynamic>> rows(String key) => [
-        for (final e in (data[key] as List? ?? []))
-          (e as Map).cast<String, dynamic>()
-      ];
+    for (final e in (data[key] as List? ?? []))
+      (e as Map).cast<String, dynamic>(),
+  ];
 
   await db.transaction(() async {
     // Delete children before parents.
@@ -112,7 +108,8 @@ Future<File?> writeAutoBackup(AppDb db, Directory dir) async {
   try {
     final snapshot = await exportSnapshot(db);
     final now = DateTime.now();
-    final stamp = '${now.year.toString().padLeft(4, '0')}-'
+    final stamp =
+        '${now.year.toString().padLeft(4, '0')}-'
         '${now.month.toString().padLeft(2, '0')}-'
         '${now.day.toString().padLeft(2, '0')}';
     final file = File('${dir.path}/$autoBackupPrefix$stamp.json');
@@ -132,13 +129,19 @@ Future<File?> writeAutoBackup(AppDb db, Directory dir) async {
 /// Auto backups in [dir], newest first.
 List<File> listAutoBackups(Directory dir) {
   if (!dir.existsSync()) return [];
-  final files = dir
-      .listSync()
-      .whereType<File>()
-      .where((f) =>
-          f.path.split(Platform.pathSeparator).last.startsWith(autoBackupPrefix) &&
-          f.path.endsWith('.json'))
-      .toList()
-    ..sort((a, b) => b.path.compareTo(a.path));
+  final files =
+      dir
+          .listSync()
+          .whereType<File>()
+          .where(
+            (f) =>
+                f.path
+                    .split(Platform.pathSeparator)
+                    .last
+                    .startsWith(autoBackupPrefix) &&
+                f.path.endsWith('.json'),
+          )
+          .toList()
+        ..sort((a, b) => b.path.compareTo(a.path));
   return files;
 }

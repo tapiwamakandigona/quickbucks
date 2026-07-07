@@ -20,7 +20,8 @@ Future<void> _init() async {
   tzdata.initializeTimeZones();
   try {
     tz.setLocalLocation(
-        tz.getLocation((await FlutterTimezone.getLocalTimezone()).identifier));
+      tz.getLocation((await FlutterTimezone.getLocalTimezone()).identifier),
+    );
   } catch (_) {
     // Fall back to the default location; the reminder is not time-critical.
   }
@@ -45,8 +46,10 @@ Future<bool> setReminder(bool on) async {
     await prefs.setBool(_kEnabled, false);
     return true;
   }
-  final android = _plugin.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>();
+  final android = _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
   final granted = await android?.requestNotificationsPermission() ?? true;
   if (!granted) return false;
   await _schedule();

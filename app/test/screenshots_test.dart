@@ -29,20 +29,27 @@ import 'support/seed.dart';
 // Samsung Galaxy A35 logical resolution (1080x2340 @ ~2.75x).
 const _phone = Size(393, 851);
 
-
-Future<void> _shot(WidgetTester tester, AppState state, Widget screen,
-    String name) async {
-  await tester.pumpWidget(ChangeNotifierProvider.value(
-    value: state,
-    child: MaterialApp(
-      theme: quickbucksTheme(),
-      debugShowCheckedModeBanner: false,
-      home: screen,
+Future<void> _shot(
+  WidgetTester tester,
+  AppState state,
+  Widget screen,
+  String name,
+) async {
+  await tester.pumpWidget(
+    ChangeNotifierProvider.value(
+      value: state,
+      child: MaterialApp(
+        theme: quickbucksTheme(),
+        debugShowCheckedModeBanner: false,
+        home: screen,
+      ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
   await expectLater(
-      find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+    find.byType(MaterialApp),
+    matchesGoldenFile('goldens/$name.png'),
+  );
 }
 
 void main() {
@@ -76,8 +83,9 @@ void main() {
     await loader.load();
   });
 
-  testWidgets('screenshot: all main screens render', tags: 'golden',
-      (tester) async {
+  testWidgets('screenshot: all main screens render', tags: 'golden', (
+    tester,
+  ) async {
     tester.view.physicalSize = _phone * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -86,13 +94,17 @@ void main() {
     await _shot(tester, state, const HomeScreen(), 'home');
     await _shot(tester, state, const ContributionsScreen(), 'saturday_book');
     await _shot(tester, state, const LoansScreen(), 'loans');
+    await _shot(tester, state, const SaturdayLoansScreen(), 'saturday_loans');
     await _shot(tester, state, const CycleSettingsScreen(), 'settings');
     await _shot(tester, state, const CreateCycleScreen(), 'create_cycle');
-    await _shot(tester, state,
-        LockScreen(onUnlocked: () {}), 'lock');
+    await _shot(tester, state, LockScreen(onUnlocked: () {}), 'lock');
     final mary = state.members.firstWhere((m) => m.name == 'Mary');
-    await _shot(tester, state, MemberDetailScreen(member: mary),
-        'member_detail');
+    await _shot(
+      tester,
+      state,
+      MemberDetailScreen(member: mary),
+      'member_detail',
+    );
     await state.repo.db.close();
   });
 }

@@ -26,44 +26,46 @@ void main() {
     }
   });
 
-  test('upgrading from v1 recomputes loan due dates with the month rule',
-      () async {
-    final dir = await Directory.systemTemp.createTemp('qb_migration');
-    final file = File('${dir.path}/qb.sqlite');
+  test(
+    'upgrading from v1 recomputes loan due dates with the month rule',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('qb_migration');
+      final file = File('${dir.path}/qb.sqlite');
 
-    // ── Set up a "v1" database: real schema, old-rule due date, version 1 ──
-    {
-      final db = AppDb(NativeDatabase(file));
-      final repo = Repo(db);
-      await repo.createCycle(
-        name: 'Savings 2026',
-        startDate: domain.day(2026, 2, 7),
-        members: [MemberInput('Mary', 2)],
-      );
-      final cycle = (await repo.activeCycle())!;
-      final mary = (await repo.membersOf(cycle.id)).single;
-      // Loan Thu 2026-07-09. Old rule: +30d = Sat 8 Aug (due 8 Aug).
-      // New rule: 9 Aug (Sun) → due Sat 15 Aug.
-      await repo.takeLoan(
+      // ── Set up a "v1" database: real schema, old-rule due date, version 1 ──
+      {
+        final db = AppDb(NativeDatabase(file));
+        final repo = Repo(db);
+        await repo.createCycle(
+          name: 'Savings 2026',
+          startDate: domain.day(2026, 2, 7),
+          members: [MemberInput('Mary', 2)],
+        );
+        final cycle = (await repo.activeCycle())!;
+        final mary = (await repo.membersOf(cycle.id)).single;
+        // Loan Sat 2026-07-11. Old rule: +30d = Mon 10 Aug → Sat 15 Aug.
+        // New rule: 11 Aug (Tue) → due Sat 15 Aug.
+        await repo.takeLoan(
           cycle: cycle,
           member: mary,
           principalCents: 10000,
-          loanDate: domain.day(2026, 7, 9));
-      // Force the old-rule value + old schema version on disk.
-      await db.customStatement(
-          "UPDATE loans SET due_date = '2026-08-08'");
-      await db.customStatement('PRAGMA user_version = 1');
-      await db.close();
-    }
+          loanDate: domain.day(2026, 7, 11),
+        );
+        // Force the old-rule value + old schema version on disk.
+        await db.customStatement("UPDATE loans SET due_date = '2026-08-08'");
+        await db.customStatement('PRAGMA user_version = 1');
+        await db.close();
+      }
 
-    // ── Reopen: drift sees 1 → 2 and must run the recompute migration ──
-    {
-      final db = AppDb(NativeDatabase(file));
-      final loan = (await db.select(db.loans).get()).single;
-      expect(loan.dueDate, '2026-08-15');
-      await db.close();
-    }
+      // ── Reopen: drift sees 1 → 3 and must run the recompute migrations ──
+      {
+        final db = AppDb(NativeDatabase(file));
+        final loan = (await db.select(db.loans).get()).single;
+        expect(loan.dueDate, '2026-08-15');
+        await db.close();
+      }
 
-    await dir.delete(recursive: true);
-  });
+      await dir.delete(recursive: true);
+    },
+  );
 }

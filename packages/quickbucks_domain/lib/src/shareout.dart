@@ -35,7 +35,24 @@ class ShareOutResult {
 /// Splits [potCents] proportionally to integer [weights] so the parts sum to
 /// the pot exactly: largest-remainder (Hamilton) method. Ties broken by the
 /// larger fractional remainder first, then by lower index (stable/deterministic).
-List<int> largestRemainderSplit(int potCents, List<int> weights) {
+///
+/// [quantumCents] sets the rounding unit: 1 = cent-exact (legacy), 100 =
+/// whole-dollar shares (SPEC §0). The pot must be a multiple of the quantum.
+List<int> largestRemainderSplit(int potCents, List<int> weights,
+    {int quantumCents = 1}) {
+  if (quantumCents < 1) throw ArgumentError('quantum must be >= 1');
+  if (quantumCents > 1) {
+    if (potCents % quantumCents != 0) {
+      throw ArgumentError(
+          'pot $potCents is not a multiple of quantum $quantumCents');
+    }
+    final units = _largestRemainderSplit(potCents ~/ quantumCents, weights);
+    return [for (final u in units) u * quantumCents];
+  }
+  return _largestRemainderSplit(potCents, weights);
+}
+
+List<int> _largestRemainderSplit(int potCents, List<int> weights) {
   if (weights.isEmpty) throw ArgumentError('weights must not be empty');
   if (weights.any((w) => w <= 0)) {
     throw ArgumentError('all weights must be positive');
@@ -67,6 +84,9 @@ List<int> largestRemainderSplit(int potCents, List<int> weights) {
 ///
 /// [multipliers] and [outstandingByMember] are keyed by member id.
 /// [cashCents] is cash on hand at cycle end.
+///
+/// Shares are computed in whole-dollar units when the pot allows it
+/// (SPEC §0); legacy pots with coins fall back to cent-exact shares.
 ShareOutResult computeShareOut({
   required int cashCents,
   required Map<String, int> multipliers,
@@ -78,7 +98,8 @@ ShareOutResult computeShareOut({
       memberIds.fold(0, (sum, id) => sum + (outstandingByMember[id] ?? 0));
   final pot = cashCents + totalOutstanding;
   final shares = largestRemainderSplit(
-      pot, [for (final id in memberIds) multipliers[id]!]);
+      pot, [for (final id in memberIds) multipliers[id]!],
+      quantumCents: pot % 100 == 0 ? 100 : 1);
 
   final lines = <ShareOutLine>[];
   for (var i = 0; i < memberIds.length; i++) {

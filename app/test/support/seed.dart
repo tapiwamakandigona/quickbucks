@@ -34,29 +34,35 @@ Future<AppState> seedAppState() async {
   final members = await repo.membersOf(cycle.id);
   // Contributions: everyone paid every Saturday Feb 7 – Jun 20.
   final sats = domain.saturdaysBetween(
-      domain.day(2026, 2, 7), domain.day(2026, 6, 20));
+    domain.day(2026, 2, 7),
+    domain.day(2026, 6, 20),
+  );
   for (final m in members) {
     for (final s in sats) {
-      await repo.tickContribution(
-          cycle: cycle, member: m, saturday: s);
+      await repo.tickContribution(cycle: cycle, member: m, saturday: s);
     }
   }
   // Loans: Mary's story + one more outstanding loan.
   final mary = members.firstWhere((m) => m.name == 'Mary');
   final grace = members.firstWhere((m) => m.name == 'Grace');
   await repo.takeLoan(
-      cycle: cycle,
-      member: mary,
-      principalCents: 10000,
-      loanDate: domain.day(2026, 5, 6));
+    cycle: cycle,
+    member: mary,
+    principalCents: 10000,
+    loanDate: domain.day(2026, 5, 9),
+  ); // Saturday (SPEC 3.1)
   final maryLoan = (await repo.loansOf(cycle.id)).single;
   await repo.recordPayment(
-      loan: maryLoan, amountCents: 5000, paidOn: domain.day(2026, 5, 20));
+    loan: maryLoan,
+    amountCents: 5000,
+    paidOn: domain.day(2026, 5, 20),
+  );
   await repo.takeLoan(
-      cycle: cycle,
-      member: grace,
-      principalCents: 25000,
-      loanDate: domain.day(2026, 6, 3));
+    cycle: cycle,
+    member: grace,
+    principalCents: 25000,
+    loanDate: domain.day(2026, 6, 6),
+  ); // Saturday (SPEC 3.1)
   final state = AppState(repo);
   await state.refresh();
   return state;

@@ -34,8 +34,9 @@ abstract final class QRadius {
   static const BorderRadius smAll = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius mdAll = BorderRadius.all(Radius.circular(md));
   static const BorderRadius lgAll = BorderRadius.all(Radius.circular(lg));
-  static const BorderRadius sheetTop =
-      BorderRadius.vertical(top: Radius.circular(lg));
+  static const BorderRadius sheetTop = BorderRadius.vertical(
+    top: Radius.circular(lg),
+  );
 }
 
 // ─── Type scale: 13 / 15 / 17 / 18 / 20 / 24 / 28 / 40 ────────────────
@@ -66,37 +67,51 @@ abstract final class QType {
   );
 
   static const TextStyle title = TextStyle(
-      fontFamily: _font,
-      fontSize: 24,
-      height: 1.15,
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.3);
+    fontFamily: _font,
+    fontSize: 24,
+    height: 1.15,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+  );
   static const TextStyle heading = TextStyle(
-      fontFamily: _font,
-      fontSize: 20,
-      height: 1.2,
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.2);
+    fontFamily: _font,
+    fontSize: 20,
+    height: 1.2,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.2,
+  );
   static const TextStyle bodyStrong = TextStyle(
-      fontFamily: _font, fontSize: 18, height: 1.35, fontWeight: FontWeight.w600);
-  static const TextStyle body =
-      TextStyle(fontFamily: _font, fontSize: 17, height: 1.45);
+    fontFamily: _font,
+    fontSize: 18,
+    height: 1.35,
+    fontWeight: FontWeight.w600,
+  );
+  static const TextStyle body = TextStyle(
+    fontFamily: _font,
+    fontSize: 17,
+    height: 1.45,
+  );
   static const TextStyle label = TextStyle(
-      fontFamily: _font,
-      fontSize: 14,
-      height: 1.3,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.2);
-  static const TextStyle caption =
-      TextStyle(fontFamily: _font, fontSize: 13, height: 1.3);
+    fontFamily: _font,
+    fontSize: 14,
+    height: 1.3,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+  );
+  static const TextStyle caption = TextStyle(
+    fontFamily: _font,
+    fontSize: 13,
+    height: 1.3,
+  );
 
   /// Small-caps style section label (stat headers).
   static const TextStyle overline = TextStyle(
-      fontFamily: _font,
-      fontSize: 13,
-      height: 1.3,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.8);
+    fontFamily: _font,
+    fontSize: 13,
+    height: 1.3,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.8,
+  );
 }
 
 // ─── Semantic colors ──────────────────────────────────────────────────
@@ -193,24 +208,34 @@ ThemeData quickbucksTheme() {
         side: BorderSide(color: scheme.outlineVariant),
       ),
       margin: const EdgeInsets.symmetric(
-          horizontal: QSpace.x4, vertical: QSpace.x2 - 2),
+        horizontal: QSpace.x4,
+        vertical: QSpace.x2 - 2,
+      ),
     ),
     listTileTheme: ListTileThemeData(
       iconColor: scheme.onSurfaceVariant,
       titleTextStyle: QType.bodyStrong.copyWith(color: scheme.onSurface),
-      subtitleTextStyle: QType.caption
-          .copyWith(fontSize: 15, color: scheme.onSurfaceVariant),
+      subtitleTextStyle: QType.caption.copyWith(
+        fontSize: 15,
+        color: scheme.onSurfaceVariant,
+      ),
       minVerticalPadding: QSpace.x3,
     ),
     dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant, thickness: 1, space: 1),
+      color: scheme.outlineVariant,
+      thickness: 1,
+      space: 1,
+    ),
     inputDecorationTheme: InputDecorationTheme(
       border: const OutlineInputBorder(borderRadius: QRadius.smAll),
       enabledBorder: OutlineInputBorder(
-          borderRadius: QRadius.smAll,
-          borderSide: BorderSide(color: scheme.outline)),
+        borderRadius: QRadius.smAll,
+        borderSide: BorderSide(color: scheme.outline),
+      ),
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: QSpace.x4, vertical: QSpace.x4 + 2),
+        horizontal: QSpace.x4,
+        vertical: QSpace.x4 + 2,
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: scheme.surfaceContainerLowest,
