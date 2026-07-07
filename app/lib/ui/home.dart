@@ -177,7 +177,11 @@ class HomeScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      // 3-button navigation bar must not cover the last row.
       builder: (_) => ListView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewPadding.bottom,
+        ),
         children: [
           for (final m in app.members)
             ListTile(

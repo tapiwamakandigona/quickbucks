@@ -19,87 +19,166 @@ class LoansScreen extends StatelessWidget {
         .where((l) => l.status == 'active' && !overdueIds.contains(l.id))
         .toList();
     final closed = app.loans.where((l) => l.status != 'active').toList();
+    final openCount = app.overdue.length + active.length;
 
     final collecting = app.cycle!.status == 'collecting';
-    return Scaffold(
-      appBar: AppBar(title: const Text('Loans')),
-      // No new loans during the collection phase (owner, 2026-07-06).
-      floatingActionButton: collecting
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  fullscreenDialog: true,
-                  builder: (_) => const SaturdayLoansScreen(),
+    // Two tabs, like the exercise book has separate pages: loans that are
+    // still to be paid, and loans that are done (owner, 2026-07-07).
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Loans'),
+          bottom: TabBar(
+            labelStyle: Theme.of(context).textTheme.titleMedium!.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+            unselectedLabelStyle: Theme.of(
+              context,
+            ).textTheme.titleMedium!.copyWith(fontSize: 17),
+            tabs: [
+              Tab(text: 'To pay${openCount > 0 ? ' ($openCount)' : ''}'),
+              Tab(
+                text: 'Paid${closed.isNotEmpty ? ' (${closed.length})' : ''}',
+              ),
+            ],
+          ),
+        ),
+        // No new loans during the collection phase (owner, 2026-07-06).
+        floatingActionButton: collecting
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    fullscreenDialog: true,
+                    builder: (_) => const SaturdayLoansScreen(),
+                  ),
                 ),
+                icon: const Icon(Icons.add),
+                label: const Text('New loans'),
               ),
-              icon: const Icon(Icons.add),
-              label: const Text('New loans'),
-            ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 96, top: 8),
-        children: [
-          if (app.overdue.isNotEmpty) ...[
-            _header(context, 'Past the due Saturday', color: kDanger),
-            for (final l in app.overdue) _OverdueCard(loan: l),
-          ],
-          // Open loans, grouped by the Saturday they were given out
-          // (SPEC 3.1: loans happen on Saturdays, so the book reads like
-          // the group's actual meetings).
-          ..._groupedBySaturday(context, active),
-          if (app.overdue.isEmpty && active.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'No open loans. Use "New loans" on a Saturday when '
-                'members take money from the pool.',
-                style: TextStyle(fontSize: 17, height: 1.4),
-              ),
-            ),
-          if (closed.isNotEmpty) ...[
-            _header(context, 'Finished loans'),
-            for (final l in closed) _LoanTile(loan: l),
-          ],
-        ],
+        body: TabBarView(
+          children: [_openTab(context, app, active), _paidTab(context, closed)],
+        ),
       ),
     );
   }
 
-  List<Widget> _groupedBySaturday(BuildContext context, List<Loan> active) {
-    if (active.isEmpty) return const [];
-    // app.loans is already newest-first by loan date.
-    final widgets = <Widget>[_header(context, 'Open loans')];
-    String? currentDate;
-    for (final l in active) {
-      if (l.loanDate != currentDate) {
-        currentDate = l.loanDate;
-        final d = fromIso(l.loanDate);
-        widgets.add(
+  Widget _openTab(BuildContext context, AppState app, List<Loan> active) {
+    if (app.overdue.isEmpty && active.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'No open loans. Use "New loans" on a Saturday when '
+          'members take money from the pool.',
+          style: TextStyle(fontSize: 17, height: 1.4),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 96, top: 4),
+      children: [
+        if (app.overdue.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 2),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text(
-              // Rollover loans start on a Sunday; normal loans on a Saturday.
-              prettyDate(d),
-              style: QType.label.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              'Past the due Saturday',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge!.copyWith(color: kDanger),
             ),
           ),
-        );
+          for (final l in app.overdue) _OverdueCard(loan: l),
+        ],
+        // Open loans, grouped by the Saturday they were given out
+        // (SPEC 3.1: loans happen on Saturdays, so the book reads like
+        // the group's actual meetings).
+        ..._groupedBySaturday(context, active),
+      ],
+    );
+  }
+
+  Widget _paidTab(BuildContext context, List<Loan> closed) {
+    if (closed.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Nothing here yet. Loans that are fully paid off (or rolled '
+          'over) move to this page.',
+          style: TextStyle(fontSize: 17, height: 1.4),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 96, top: 4),
+      children: _groupedBySaturday(context, closed, paid: true),
+    );
+  }
+
+  List<Widget> _groupedBySaturday(
+    BuildContext context,
+    List<Loan> loans, {
+    bool paid = false,
+  }) {
+    if (loans.isEmpty) return const [];
+    // app.loans is already newest-first by loan date.
+    final widgets = <Widget>[];
+    String? currentDate;
+    for (final l in loans) {
+      if (l.loanDate != currentDate) {
+        currentDate = l.loanDate;
+        final sameDay = loans.where((x) => x.loanDate == currentDate).toList();
+        widgets.add(_SaturdayBanner(date: fromIso(l.loanDate), loans: sameDay));
       }
       widgets.add(_LoanTile(loan: l));
     }
     return widgets;
   }
+}
 
-  Widget _header(BuildContext context, String text, {Color? color}) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-    child: Text(
-      text,
-      style: Theme.of(context).textTheme.titleLarge!.copyWith(color: color),
-    ),
-  );
+/// A bold banner that opens each Saturday's group of loans, so the book
+/// clearly shows WHEN every loan was taken (owner, 2026-07-07).
+class _SaturdayBanner extends StatelessWidget {
+  final DateTime date;
+  final List<Loan> loans;
+  const _SaturdayBanner({required this.date, required this.loans});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = loans.fold(0, (s, l) => s + l.principalCents);
+    // Rollover loans start on a Sunday; normal loans on a Saturday.
+    final isSat = date.weekday == DateTime.saturday;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: kGoldContainer,
+        borderRadius: QRadius.mdAll,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.event, size: 22, color: kInk),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isSat ? 'Saturday ${satDate(date)}' : prettyDate(date),
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: kInk,
+              ),
+            ),
+          ),
+          Text(
+            '${loans.length} ${loans.length == 1 ? 'loan' : 'loans'} · ${money(total)}',
+            style: const TextStyle(fontSize: 15, color: kInk),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LoanTile extends StatelessWidget {
@@ -237,10 +316,15 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
     showDragHandle: true,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setSheet) => Padding(
+        // + viewPadding.bottom: her phone uses the 3-button navigation
+        // bar, which must never cover the buttons (owner, 2026-07-07).
         padding: EdgeInsets.only(
           left: 20,
           right: 20,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          bottom:
+              MediaQuery.of(ctx).viewInsets.bottom +
+              MediaQuery.of(ctx).viewPadding.bottom +
+              24,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

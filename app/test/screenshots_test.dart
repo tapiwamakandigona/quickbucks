@@ -94,6 +94,13 @@ void main() {
     await _shot(tester, state, const HomeScreen(), 'home');
     await _shot(tester, state, const ContributionsScreen(), 'saturday_book');
     await _shot(tester, state, const LoansScreen(), 'loans');
+    // The Paid tab of the loans book.
+    await tester.tap(find.text('Paid'));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/loans_paid.png'),
+    );
     await _shot(tester, state, const SaturdayLoansScreen(), 'saturday_loans');
     await _shot(tester, state, const CycleSettingsScreen(), 'settings');
     await _shot(tester, state, const CreateCycleScreen(), 'create_cycle');

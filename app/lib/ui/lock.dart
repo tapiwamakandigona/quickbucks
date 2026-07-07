@@ -128,21 +128,24 @@ Future<void> managePin(BuildContext context) async {
   final action = await showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
-    builder: (ctx) => Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ListTile(
-          leading: const Icon(Icons.password),
-          title: Text(hasPin ? 'Change PIN' : 'Set a PIN'),
-          onTap: () => Navigator.pop(ctx, 'set'),
-        ),
-        if (hasPin)
+    // 3-button navigation bar must not cover the last row.
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           ListTile(
-            leading: const Icon(Icons.lock_open),
-            title: const Text('Remove PIN'),
-            onTap: () => Navigator.pop(ctx, 'remove'),
+            leading: const Icon(Icons.password),
+            title: Text(hasPin ? 'Change PIN' : 'Set a PIN'),
+            onTap: () => Navigator.pop(ctx, 'set'),
           ),
-      ],
+          if (hasPin)
+            ListTile(
+              leading: const Icon(Icons.lock_open),
+              title: const Text('Remove PIN'),
+              onTap: () => Navigator.pop(ctx, 'remove'),
+            ),
+        ],
+      ),
     ),
   );
   if (action == null || !context.mounted) return;
