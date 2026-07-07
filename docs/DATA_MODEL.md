@@ -12,7 +12,7 @@ All money fields are **integer cents**. All date fields are **local calendar dat
 | name | text | e.g. "2026 Round 1" (auto-suggested, editable) |
 | start_date | date | |
 | end_date | date? | optional at creation, **editable while active** |
-| status | enum | `active` \| `ended` |
+| status | enum | `active` \| `collecting` \| `ended` |
 | ended_on | date? | set by reaching end_date or "End now" |
 | weekly_unit_cents | int | 1000 ($10). Stored per cycle so a future change doesn't rewrite history |
 | interest_pct | int | 20. Stored per cycle for the same reason |

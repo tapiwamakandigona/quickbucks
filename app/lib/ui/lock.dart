@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/pin.dart' as pin;
 import 'common.dart';
@@ -16,15 +17,21 @@ class _LockScreenState extends State<LockScreen> {
   String _entered = '';
   bool _wrong = false;
 
+  int _failCount = 0;
+
   Future<void> _tap(String digit) async {
     if (_entered.length >= 6) return;
+    HapticFeedback.lightImpact(); // N4: haptic feedback.
     setState(() {
       _entered += digit;
       _wrong = false;
     });
     if (_entered.length >= 4 && await pin.checkPin(_entered)) {
+      _failCount = 0;
       widget.onUnlocked();
     } else if (_entered.length == 6) {
+      HapticFeedback.heavyImpact();
+      _failCount++;
       setState(() {
         _wrong = true;
         _entered = '';
@@ -47,11 +54,13 @@ class _LockScreenState extends State<LockScreen> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             if (_wrong)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Wrong PIN — try again',
-                  style: TextStyle(color: Colors.red, fontSize: 16),
+                  _failCount >= 5
+                      ? 'Wrong PIN — ${_failCount} failed attempts'
+                      : 'Wrong PIN — try again',
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
                 ),
               ),
             const SizedBox(height: 16),
@@ -114,10 +123,68 @@ class _LockScreenState extends State<LockScreen> {
                     ),
                 ],
               ),
+            // C2: emergency reset after 5 failed attempts.
+            if (_failCount >= 5) ...[
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: () => _emergencyReset(context),
+                child: const Text(
+                  'Forgot your PIN?',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// Emergency PIN reset: clears the PIN after the user types "RESET"
+  /// in a confirmation dialog. The app data stays intact.
+  Future<void> _emergencyReset(BuildContext context) async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove the PIN?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Your records are safe — only the lock is removed.\n\n'
+              'Type RESET below to confirm:',
+              style: TextStyle(fontSize: 16, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(fontSize: 20, letterSpacing: 4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (ctrl.text.trim().toUpperCase() == 'RESET') {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: const Text('Remove PIN'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await pin.clearPin();
+      if (context.mounted) widget.onUnlocked();
+    }
   }
 }
 

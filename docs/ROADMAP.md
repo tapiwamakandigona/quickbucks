@@ -28,7 +28,6 @@ The most important milestone. Pure Dart, zero UI → `packages/quickbucks_domain
 - ☑ Catch-up support (SPEC §7): past start date, backdated loans/payments
 - ☑ Home dashboard: cash on hand, pool value, due soon, this Saturday's ticks
 - ☐ On-device walkthrough / polish pass
-- ☐ Home dashboard: cash on hand, pool value, due soon, this Saturday's ticks
 
 ## M4 — Cycle end ◐
 - ☑ Editable start + end dates; two-step end (collection phase → share out)

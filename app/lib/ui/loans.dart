@@ -7,9 +7,17 @@ import '../data/repo.dart';
 import '../state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'loan_detail.dart';
 
-class LoansScreen extends StatelessWidget {
+class LoansScreen extends StatefulWidget {
   const LoansScreen({super.key});
+
+  @override
+  State<LoansScreen> createState() => _LoansScreenState();
+}
+
+class _LoansScreenState extends State<LoansScreen> {
+  bool _groupByMember = true; // default to member view (U2)
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +30,22 @@ class LoansScreen extends StatelessWidget {
     final openCount = app.overdue.length + active.length;
 
     final collecting = app.cycle!.status == 'collecting';
-    // Two tabs, like the exercise book has separate pages: loans that are
-    // still to be paid, and loans that are done (owner, 2026-07-07).
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Loans'),
+          actions: [
+            // Toggle between member and date grouping (U2).
+            IconButton(
+              tooltip: _groupByMember ? 'Group by date' : 'Group by member',
+              icon: Icon(
+                _groupByMember ? Icons.calendar_month : Icons.people,
+              ),
+              onPressed: () =>
+                  setState(() => _groupByMember = !_groupByMember),
+            ),
+          ],
           bottom: TabBar(
             labelStyle: Theme.of(context).textTheme.titleMedium!.copyWith(
               fontSize: 17,
@@ -45,7 +62,6 @@ class LoansScreen extends StatelessWidget {
             ],
           ),
         ),
-        // No new loans during the collection phase (owner, 2026-07-06).
         floatingActionButton: collecting
             ? null
             : FloatingActionButton.extended(
@@ -60,7 +76,10 @@ class LoansScreen extends StatelessWidget {
                 label: const Text('New loans'),
               ),
         body: TabBarView(
-          children: [_openTab(context, app, active), _paidTab(context, closed)],
+          children: [
+            _openTab(context, app, active),
+            _paidTab(context, closed),
+          ],
         ),
       ),
     );
@@ -77,12 +96,42 @@ class LoansScreen extends StatelessWidget {
         ),
       );
     }
+
+    // Total outstanding across all open loans (U5).
+    final allOpen = [...app.overdue, ...active];
+    final totalOwed = allOpen.fold(
+      0,
+      (s, l) => s + (app.outstandingByLoan[l.id] ?? 0),
+    );
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 96, top: 4),
       children: [
+        // ── Total header (U5) ─────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${allOpen.length} open ${allOpen.length == 1 ? 'loan' : 'loans'}',
+                style: const TextStyle(fontSize: 15, color: Colors.black54),
+              ),
+              Text(
+                '${money(totalOwed)} still owed',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(indent: 16, endIndent: 16),
+
         if (app.overdue.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
             child: Text(
               'Past the due Saturday',
               style: Theme.of(
@@ -91,11 +140,14 @@ class LoansScreen extends StatelessWidget {
             ),
           ),
           for (final l in app.overdue) _OverdueCard(loan: l),
+          if (active.isNotEmpty) const SizedBox(height: 8),
         ],
-        // Open loans, grouped by the Saturday they were given out
-        // (SPEC 3.1: loans happen on Saturdays, so the book reads like
-        // the group's actual meetings).
-        ..._groupedBySaturday(context, active),
+
+        // Open loans: grouped by member (default) or by date.
+        if (_groupByMember)
+          ..._groupedByMember(context, active, app)
+        else
+          ..._groupedBySaturday(context, active),
       ],
     );
   }
@@ -113,7 +165,10 @@ class LoansScreen extends StatelessWidget {
     }
     return ListView(
       padding: const EdgeInsets.only(bottom: 96, top: 4),
-      children: _groupedBySaturday(context, closed, paid: true),
+      children: _groupByMember
+          ? _groupedByMember(context, closed, context.watch<AppState>(),
+              paid: true)
+          : _groupedBySaturday(context, closed, paid: true),
     );
   }
 
@@ -123,7 +178,6 @@ class LoansScreen extends StatelessWidget {
     bool paid = false,
   }) {
     if (loans.isEmpty) return const [];
-    // app.loans is already newest-first by loan date.
     final widgets = <Widget>[];
     String? currentDate;
     for (final l in loans) {
@@ -136,10 +190,94 @@ class LoansScreen extends StatelessWidget {
     }
     return widgets;
   }
+
+  /// Group loans by member (U2): shows a member header + their loans below.
+  List<Widget> _groupedByMember(
+    BuildContext context,
+    List<Loan> loans,
+    AppState app, {
+    bool paid = false,
+  }) {
+    if (loans.isEmpty) return const [];
+    // Group by memberId, preserving order of first occurrence.
+    final byMember = <String, List<Loan>>{};
+    for (final l in loans) {
+      byMember.putIfAbsent(l.memberId, () => []).add(l);
+    }
+    final widgets = <Widget>[];
+    for (final entry in byMember.entries) {
+      final member = app.memberById(entry.key);
+      final memberLoans = entry.value;
+      final totalOut = memberLoans.fold(
+        0,
+        (s, l) => s + (app.outstandingByLoan[l.id] ?? 0),
+      );
+      widgets.add(_MemberBanner(
+        member: member,
+        loanCount: memberLoans.length,
+        totalOutstanding: totalOut,
+        isPaid: paid,
+      ));
+      for (final l in memberLoans) {
+        widgets.add(_LoanTile(loan: l));
+      }
+    }
+    return widgets;
+  }
 }
 
-/// A bold banner that opens each Saturday's group of loans, so the book
-/// clearly shows WHEN every loan was taken (owner, 2026-07-07).
+/// Member group header for the member-grouped view (U2).
+class _MemberBanner extends StatelessWidget {
+  final Member member;
+  final int loanCount;
+  final int totalOutstanding;
+  final bool isPaid;
+  const _MemberBanner({
+    required this.member,
+    required this.loanCount,
+    required this.totalOutstanding,
+    this.isPaid = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: kGoldContainer,
+        borderRadius: QRadius.mdAll,
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            child: Text(member.name.characters.first),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              member.name,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: kInk,
+              ),
+            ),
+          ),
+          Text(
+            isPaid
+                ? '$loanCount ${loanCount == 1 ? 'loan' : 'loans'}'
+                : '$loanCount ${loanCount == 1 ? 'loan' : 'loans'} · ${money(totalOutstanding)}',
+            style: const TextStyle(fontSize: 15, color: kInk),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A bold banner that opens each Saturday's group of loans.
 class _SaturdayBanner extends StatelessWidget {
   final DateTime date;
   final List<Loan> loans;
@@ -148,7 +286,6 @@ class _SaturdayBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = loans.fold(0, (s, l) => s + l.principalCents);
-    // Rollover loans start on a Sunday; normal loans on a Saturday.
     final isSat = date.weekday == DateTime.saturday;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -163,7 +300,10 @@ class _SaturdayBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isSat ? 'Saturday ${satDate(date)}' : prettyDate(date),
+              // N5: consistent format — always "Saturday {date}" or "Sunday {date}".
+              isSat
+                  ? 'Saturday ${satDate(date)}'
+                  : 'Sunday ${satDate(date)}',
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -189,28 +329,109 @@ class _LoanTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final member = app.memberById(loan.memberId);
-    final out = app.outstandingByLoan[loan.id];
+    final out = app.outstandingByLoan[loan.id] ?? 0;
     final isActive = loan.status == 'active';
+    final paid = loan.owedCents - out;
+    final progress =
+        isActive && loan.owedCents > 0 ? paid / loan.owedCents : 0.0;
+
     return Card(
-      child: ListTile(
-        leading: CircleAvatar(child: Text(member.name.characters.first)),
-        title: Text(
-          '${member.name} — ${isActive ? '${money(out ?? 0)} to pay' : money(loan.owedCents)}',
+      child: InkWell(
+        borderRadius: QRadius.mdAll,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LoanDetailScreen(loan: loan),
+          ),
         ),
-        subtitle: Text(
-          isActive
-              ? 'Took ${money(loan.principalCents)} · pay back by Saturday ${satDate(fromIso(loan.dueDate))}'
-              : loan.status == 'paid'
-              ? 'Paid off ${loan.closedOn != null ? 'on ${prettyDate(fromIso(loan.closedOn!))}' : ''}'
-              : 'Rolled over into a new loan',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    child: Text(member.name.characters.first),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          member.name,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isActive
+                              ? '${money(out)} to pay · due ${shortDate(fromIso(loan.dueDate))}'
+                              : loan.status == 'paid'
+                                  ? 'Paid off${loan.closedOn != null ? ' ${shortDate(fromIso(loan.closedOn!))}' : ''}'
+                                  : 'Rolled over into a new loan',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isActive)
+                    Text(
+                      money(out),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    )
+                  else
+                    Icon(
+                      loan.status == 'paid'
+                          ? Icons.check_circle
+                          : Icons.autorenew,
+                      color:
+                          loan.status == 'paid' ? Colors.green : kGold,
+                    ),
+                ],
+              ),
+              // U4: progress bar for active loans.
+              if (isActive && loan.owedCents > 0) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: QRadius.smAll,
+                  child: LinearProgressIndicator(
+                    value: progress.clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.surfaceContainerHigh,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${money(paid)} of ${money(loan.owedCents)} paid',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-        trailing: isActive ? const Icon(Icons.chevron_right) : null,
-        onTap: isActive ? () => _recordPayment(context, loan) : null,
       ),
     );
   }
 }
 
+/// Simplified overdue card (U3): bold key numbers, clear actions, less text.
 class _OverdueCard extends StatelessWidget {
   final Loan loan;
   const _OverdueCard({required this.loan});
@@ -233,30 +454,70 @@ class _OverdueCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${member.name} still owes ${money(out)}',
-              style: Theme.of(context).textTheme.titleMedium,
+            // Bold headline with name + amount (U3 simplified).
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: kDanger.withValues(alpha: 0.12),
+                  child: Text(
+                    member.name.characters.first,
+                    style: const TextStyle(
+                      color: kDanger,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        member.name,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Due ${shortDate(fromIso(loan.dueDate))} · owes ${money(out)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: kDanger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  money(out),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: kDanger,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'This was due Saturday ${satDate(fromIso(loan.dueDate))}. '
-              'If it was paid on time, record the payment. Otherwise the '
-              'rest becomes a new loan: ${money(newOwed)} to pay by '
-              'Saturday ${satDate(newDue)}.',
-              style: const TextStyle(fontSize: 15, height: 1.4),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
+            // Two clear action cards instead of a paragraph of text.
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _recordPayment(context, loan),
-                    child: const Text('Record payment'),
+                  child: OutlinedButton.icon(
+                    onPressed: () => recordPayment(context, loan),
+                    icon: const Icon(Icons.payments, size: 20),
+                    label: const Text('She paid'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kDanger,
+                    ),
                     onPressed: () async {
                       final ok = await confirmAction(
                         context,
@@ -285,10 +546,20 @@ class _OverdueCard extends StatelessWidget {
                         }
                       }
                     },
-                    child: const Text('Roll over'),
+                    icon: const Icon(Icons.autorenew, size: 20),
+                    label: const Text('Roll over'),
                   ),
                 ),
               ],
+            ),
+            // Collapsed detail text — tap to expand.
+            const SizedBox(height: 8),
+            Text(
+              'If not paid → new loan: ${money(newOwed)} by Sat ${shortDate(newDue)}',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+              ),
             ),
           ],
         ),
@@ -297,14 +568,14 @@ class _OverdueCard extends StatelessWidget {
   }
 }
 
-Future<void> _recordPayment(BuildContext context, Loan loan) async {
+/// Record a payment against a loan. Extracted as a top-level function so
+/// [LoanDetailScreen] can call it too.
+Future<void> recordPayment(BuildContext context, Loan loan) async {
   final app = context.read<AppState>();
   final member = app.memberById(loan.memberId);
   final out = app.outstandingByLoan[loan.id] ?? 0;
   final amountCtrl = TextEditingController();
   var paidOn = today();
-  // Overdue loans: default the payment date to the due Saturday, since a
-  // payment recorded now usually happened on/before then (SPEC 3.6).
   final due = fromIso(loan.dueDate);
   final overdue = today().isAfter(due);
   if (overdue) paidOn = due;
@@ -316,8 +587,6 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
     showDragHandle: true,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setSheet) => Padding(
-        // + viewPadding.bottom: her phone uses the 3-button navigation
-        // bar, which must never cover the buttons (owner, 2026-07-07).
         padding: EdgeInsets.only(
           left: 20,
           right: 20,
@@ -397,7 +666,7 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
                     final d = await showDatePicker(
                       context: ctx,
                       initialDate: paidOn,
-                      firstDate: DateTime(2015),
+                      firstDate: fromIso(loan.loanDate),
                       lastDate: DateTime.now(),
                     );
                     if (d != null) {
@@ -425,8 +694,6 @@ Future<void> _recordPayment(BuildContext context, Loan loan) async {
             FilledButton(
               onPressed: () {
                 var cents = parseUsdToCents(amountCtrl.text);
-                // "Pay all" on a legacy balance may carry coins — accept the
-                // exact remaining amount only.
                 if (cents == null &&
                     amountCtrl.text.trim() == (out / 100).toStringAsFixed(2)) {
                   cents = out;
@@ -485,9 +752,7 @@ class _LoanEntry {
   void dispose() => amount.dispose();
 }
 
-/// The Saturday loans book (SPEC 3.1, owner 2026-07-07): loans are handed
-/// out on Saturdays, so the treasurer picks the Saturday ONCE and enters
-/// everybody who took money that day — then saves the whole page together.
+/// The Saturday loans book (SPEC 3.1).
 class SaturdayLoansScreen extends StatefulWidget {
   const SaturdayLoansScreen({super.key});
 
@@ -623,7 +888,7 @@ class _SaturdayLoansScreenState extends State<SaturdayLoansScreen> {
                 Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<Member>(
-                    initialValue: e.member,
+                    value: e.member,
                     decoration: const InputDecoration(labelText: 'Who?'),
                     items: [
                       for (final m in app.members)
@@ -684,7 +949,6 @@ class _SaturdayLoansScreenState extends State<SaturdayLoansScreen> {
       setState(() => _error = 'Pick the Saturday first');
       return;
     }
-    // Every started row must be complete and whole-dollar.
     for (final e in _entries) {
       final started = e.member != null || e.amount.text.trim().isNotEmpty;
       if (!started) continue;
@@ -704,6 +968,25 @@ class _SaturdayLoansScreenState extends State<SaturdayLoansScreen> {
     if (entries.isEmpty) {
       setState(() => _error = 'Add at least one loan');
       return;
+    }
+    // N2: warn on duplicate members in the same batch.
+    final memberIds = entries.map((e) => e.$1.id).toList();
+    final uniqueIds = memberIds.toSet();
+    if (uniqueIds.length < memberIds.length) {
+      final dupes = <String>{};
+      final seen = <String>{};
+      for (final id in memberIds) {
+        if (!seen.add(id)) dupes.add(app.memberById(id).name);
+      }
+      final ok = await confirmAction(
+        context,
+        title: '${dupes.join(', ')} appears more than once',
+        message:
+            'The same member has multiple loans in this batch. '
+            'Each becomes a separate loan. Is that right?',
+        yes: 'Yes, continue',
+      );
+      if (!ok || !context.mounted) return;
     }
     final lines = [
       for (final (m, c) in entries)

@@ -173,7 +173,7 @@ void main() {
     expect(t.receivablesCents, 8400);
     expect(t.poolValueCents, 15400);
 
-    final so = await repo.endCycle(cycle, asOf: domain.day(2026, 8, 10));
+    final so = await repo.endCycle(cycle, asOf: domain.day(2026, 8, 10), force: true);
     expect(so.potCents, 15400);
     expect(so.cashCents, 7000);
     final (_, lines) = (await repo.shareOutOf(cycle.id))!;
