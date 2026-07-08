@@ -43,6 +43,26 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
       showNote(context, 'Add at least one member', error: true);
       return;
     }
+    // M1: warn on duplicate names.
+    final names = members.map((m) => m.name.toLowerCase()).toList();
+    final dupes = <String>{};
+    final seen = <String>{};
+    for (final n in names) {
+      if (!seen.add(n)) dupes.add(n);
+    }
+    if (dupes.isNotEmpty) {
+      final ok = await confirmAction(
+        context,
+        title: 'Same name used twice',
+        message:
+            'You have more than one member called '
+            '"${dupes.map((d) => members.firstWhere((m) => m.name.toLowerCase() == d).name).join(', ')}". '
+            'Consider adding a last initial to tell them apart.\n\n'
+            'Continue anyway?',
+        yes: 'Continue',
+      );
+      if (!ok || !mounted) return;
+    }
     final totalWeekly = members.fold(0, (s, m) => s + m.multiplier) * 1000;
     final ok = await confirmAction(
       context,

@@ -59,7 +59,7 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: ChoiceChip(
                     label: Text(
-                      '${s.day}/${s.month}/${s.year}',
+                      shortDate(s),
                       style: done
                           ? null
                           : TextStyle(

@@ -219,6 +219,22 @@ class CycleSettingsScreen extends StatelessWidget {
     final cycle = app.cycle!;
     final t = app.totals!;
     final openDebts = t.receivablesCents;
+
+    // If the cycle is still active (contributions running), warn first and
+    // require an extra confirmation (C1 fix: prevent accidental closure).
+    if (cycle.status == 'active') {
+      final sure = await confirmAction(
+        context,
+        title: '⚠️ Weekly payments are still running',
+        message:
+            'You haven\'t ended weekly payments yet. Sharing out now will '
+            'close the cycle immediately — no more contributions or new '
+            'loans.\n\nAre you sure you want to skip straight to sharing out?',
+        yes: 'Yes, share out now',
+      );
+      if (!sure || !context.mounted) return;
+    }
+
     final ok = await confirmAction(
       context,
       title: 'Share out and finish the cycle?',
@@ -232,7 +248,7 @@ class CycleSettingsScreen extends StatelessWidget {
     );
     if (!ok || !context.mounted) return;
     try {
-      await app.repo.endCycle(cycle);
+      await app.repo.endCycle(cycle, force: cycle.status == 'active');
       await app.refresh();
       if (context.mounted) {
         Navigator.pushReplacement(

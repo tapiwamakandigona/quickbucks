@@ -112,7 +112,8 @@ class Repo {
   }
 
   /// Start date is editable (owner request 2026-07-06) — dates are fixable,
-  /// members/multipliers stay locked.
+  /// members/multipliers stay locked. Rejects if contributions or loans exist
+  /// on Saturdays before the proposed new start date.
   Future<void> editStartDate(String cycleId, DateTime startDate) async {
     final cycle = await (db.select(
       db.cycles,
@@ -122,6 +123,30 @@ class Repo {
     }
     if (cycle.endDate != null && !fromIso(cycle.endDate!).isAfter(startDate)) {
       throw ArgumentError('Start date must be before the end date');
+    }
+    // Check for contributions before the new start date.
+    final earlyContrib = await (db.select(db.contributions)
+          ..where((c) =>
+              c.cycleId.equals(cycleId) &
+              c.saturday.isSmallerThanValue(iso(startDate))))
+        .get();
+    if (earlyContrib.isNotEmpty) {
+      throw StateError(
+        'There are ${earlyContrib.length} payment(s) recorded before '
+        'this date. Remove them first or pick an earlier start.',
+      );
+    }
+    // Check for loans before the new start date.
+    final earlyLoans = await (db.select(db.loans)
+          ..where((l) =>
+              l.cycleId.equals(cycleId) &
+              l.loanDate.isSmallerThanValue(iso(startDate))))
+        .get();
+    if (earlyLoans.isNotEmpty) {
+      throw StateError(
+        'There are ${earlyLoans.length} loan(s) dated before this date. '
+        'Remove them first or pick an earlier start.',
+      );
     }
     await (db.update(db.cycles)..where((c) => c.id.equals(cycleId))).write(
       CyclesCompanion(startDate: Value(iso(startDate))),
@@ -159,6 +184,14 @@ class Repo {
   }) async {
     if (!domain.isSaturday(saturday)) {
       throw ArgumentError('Contributions are recorded for Saturdays');
+    }
+    final start = fromIso(cycle.startDate);
+    final end = cycle.endDate != null ? fromIso(cycle.endDate!) : null;
+    if (saturday.isBefore(start)) {
+      throw ArgumentError('This Saturday is before the cycle started');
+    }
+    if (end != null && saturday.isAfter(end)) {
+      throw ArgumentError('This Saturday is after the cycle ended');
     }
     await db
         .into(db.contributions)
@@ -257,6 +290,10 @@ class Repo {
     domain.validateLoanDate(loanDate);
     if (!domain.isWholeDollars(principalCents)) {
       throw ArgumentError('Loan amounts are whole dollars — no coins');
+    }
+    final start = fromIso(cycle.startDate);
+    if (loanDate.isBefore(start)) {
+      throw ArgumentError('This loan date is before the cycle started');
     }
     final l = domain.Loan(
       id: _uuid.v4(),
@@ -529,7 +566,21 @@ class Repo {
   /// Step 2 of ending (SPEC 5): the share-out. Splits the pot by multiplier
   /// weight; any remaining debts are deducted from shares (negative final
   /// balances allowed). Closes the cycle for good.
-  Future<ShareOut> endCycle(Cycle cycle, {DateTime? asOf}) async {
+  ///
+  /// Requires the cycle to be in the `collecting` state (contributions ended).
+  /// Call [endContributions] first. The UI may pass [force] to allow sharing
+  /// out directly from `active` after an explicit double-confirmation.
+  Future<ShareOut> endCycle(Cycle cycle,
+      {DateTime? asOf, bool force = false}) async {
+    if (cycle.status == 'ended') {
+      throw StateError('This cycle is already finished');
+    }
+    if (cycle.status == 'active' && !force) {
+      throw StateError(
+        'End weekly payments first, then share out. '
+        'Weekly payments are still running.',
+      );
+    }
     final now = asOf ?? today();
     final members = await membersOf(cycle.id);
     final loans = await loansOf(cycle.id);
