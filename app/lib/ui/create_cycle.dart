@@ -5,6 +5,7 @@ import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
 import '../data/repo.dart';
 import '../state.dart';
 import 'common.dart';
+import 'cycle_end.dart';
 
 class CreateCycleScreen extends StatefulWidget {
   const CreateCycleScreen({super.key});
@@ -166,6 +167,50 @@ class _CreateCycleScreenState extends State<CreateCycleScreen> {
                 : const Text('Start cycle'),
           ),
           const SizedBox(height: 40),
+          // B1: Show finished cycles even when no active cycle exists,
+          // so the treasurer can review past records between rounds.
+          Builder(
+            builder: (context) {
+              final archived = context.watch<AppState>().archived;
+              if (archived.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Finished cycles',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tap to review share-outs and records from past rounds.',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final c in archived)
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.inventory_2, size: 30),
+                        title: Text(c.name),
+                        subtitle: Text(
+                          '${prettyDate(fromIso(c.startDate))} → '
+                          '${c.endedOn == null ? '' : prettyDate(fromIso(c.endedOn!))}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ShareOutSheetScreen(cycle: c),
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

@@ -132,20 +132,22 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.grid_on, size: 32),
-                title: const Text('Weekly payments'),
-                subtitle: const Text('The Saturday book — tick who paid'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ContributionsScreen(),
+            // B4: hide the weekly-payments card during collection phase.
+            if (!collecting)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.grid_on, size: 32),
+                  title: const Text('Weekly payments'),
+                  subtitle: const Text('The Saturday book — tick who paid'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ContributionsScreen(),
+                    ),
                   ),
                 ),
               ),
-            ),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.groups, size: 32),

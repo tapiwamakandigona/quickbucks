@@ -16,20 +16,28 @@ class LockScreen extends StatefulWidget {
 class _LockScreenState extends State<LockScreen> {
   String _entered = '';
   bool _wrong = false;
-
   int _failCount = 0;
+  int _pinLength = 4; // N1: actual stored PIN length (default until loaded).
+
+  @override
+  void initState() {
+    super.initState();
+    pin.pinLength().then((len) {
+      if (mounted) setState(() => _pinLength = len);
+    });
+  }
 
   Future<void> _tap(String digit) async {
-    if (_entered.length >= 6) return;
+    if (_entered.length >= _pinLength) return;
     HapticFeedback.lightImpact(); // N4: haptic feedback.
     setState(() {
       _entered += digit;
       _wrong = false;
     });
-    if (_entered.length >= 4 && await pin.checkPin(_entered)) {
+    if (_entered.length == _pinLength && await pin.checkPin(_entered)) {
       _failCount = 0;
       widget.onUnlocked();
-    } else if (_entered.length == 6) {
+    } else if (_entered.length == _pinLength) {
       HapticFeedback.heavyImpact();
       _failCount++;
       setState(() {
@@ -58,16 +66,17 @@ class _LockScreenState extends State<LockScreen> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _failCount >= 5
-                      ? 'Wrong PIN — ${_failCount} failed attempts'
+                      ? 'Wrong PIN — $_failCount failed attempts'
                       : 'Wrong PIN — try again',
                   style: const TextStyle(color: Colors.red, fontSize: 16),
                 ),
               ),
             const SizedBox(height: 16),
+            // N1: show only as many dots as the stored PIN length.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var i = 0; i < 6; i++)
+                for (var i = 0; i < _pinLength; i++)
                   Container(
                     margin: const EdgeInsets.all(6),
                     width: 18,
