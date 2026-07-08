@@ -107,13 +107,46 @@ class MemberDetailScreen extends StatelessWidget {
 
 /// Loan card that shows payment rows inline (M6) and navigates to the
 /// loan detail screen on tap. Rolled-over loans show a link (M5).
-class _LoanCardWithPayments extends StatelessWidget {
+///
+/// N3: Converted to StatefulWidget to cache the payment-query future — the
+/// old StatelessWidget created a new Future on every `build()` call (which
+/// fires on every `AppState` notification) causing unnecessary DB queries.
+class _LoanCardWithPayments extends StatefulWidget {
   final Loan loan;
   const _LoanCardWithPayments({required this.loan});
 
   @override
+  State<_LoanCardWithPayments> createState() => _LoanCardWithPaymentsState();
+}
+
+class _LoanCardWithPaymentsState extends State<_LoanCardWithPayments> {
+  late Future<List<LoanPayment>> _paymentsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _paymentsFuture = context.read<AppState>().repo.paymentRowsOf(widget.loan.id);
+  }
+
+  @override
+  void didUpdateWidget(_LoanCardWithPayments old) {
+    super.didUpdateWidget(old);
+    if (old.loan.id != widget.loan.id) {
+      _paymentsFuture = context.read<AppState>().repo.paymentRowsOf(widget.loan.id);
+    }
+  }
+
+  /// Called after a navigation return or state change to re-fetch payments.
+  void _refreshPayments() {
+    setState(() {
+      _paymentsFuture = context.read<AppState>().repo.paymentRowsOf(widget.loan.id);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final loan = widget.loan;
     final isActive = loan.status == 'active';
     final out = app.outstandingByLoan[loan.id] ?? 0;
     final child = app.loans
@@ -123,12 +156,15 @@ class _LoanCardWithPayments extends StatelessWidget {
     return Card(
       child: InkWell(
         borderRadius: QRadius.mdAll,
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LoanDetailScreen(loan: loan),
-          ),
-        ),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LoanDetailScreen(loan: loan),
+            ),
+          );
+          if (mounted) _refreshPayments();
+        },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -179,7 +215,7 @@ class _LoanCardWithPayments extends StatelessWidget {
               ),
               // M6: inline payment history.
               FutureBuilder<List<LoanPayment>>(
-                future: app.repo.paymentRowsOf(loan.id),
+                future: _paymentsFuture,
                 builder: (context, snap) {
                   final payments = snap.data ?? [];
                   if (payments.isEmpty) return const SizedBox.shrink();

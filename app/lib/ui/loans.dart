@@ -887,6 +887,8 @@ class _SaturdayLoansScreenState extends State<SaturdayLoansScreen> {
               children: [
                 Expanded(
                   flex: 3,
+                  // B5: DropdownButtonFormField.value may be deprecated in
+                  // future Flutter versions — revisit when upgrading past 3.44.
                   child: DropdownButtonFormField<Member>(
                     value: e.member,
                     decoration: const InputDecoration(labelText: 'Who?'),

@@ -182,6 +182,13 @@ class Repo {
     required Member member,
     required DateTime saturday,
   }) async {
+    // B4: block contributions during the collection phase.
+    if (cycle.status == 'collecting') {
+      throw StateError(
+        'Weekly payments have ended — no more contributions during '
+        'the collection phase',
+      );
+    }
     if (!domain.isSaturday(saturday)) {
       throw ArgumentError('Contributions are recorded for Saturdays');
     }
@@ -294,6 +301,13 @@ class Repo {
     final start = fromIso(cycle.startDate);
     if (loanDate.isBefore(start)) {
       throw ArgumentError('This loan date is before the cycle started');
+    }
+    // B3: also validate against cycle end date (defense-in-depth).
+    if (cycle.endDate != null) {
+      final end = fromIso(cycle.endDate!);
+      if (loanDate.isAfter(end)) {
+        throw ArgumentError('This loan date is after the cycle ended');
+      }
     }
     final l = domain.Loan(
       id: _uuid.v4(),

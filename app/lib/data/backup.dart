@@ -104,15 +104,20 @@ const autoBackupPrefix = 'quickbucks-auto-';
 /// Writes (or overwrites) today's auto backup in [dir]; prunes old ones.
 /// Returns the file written. Never throws — a failed safety net must not
 /// break the actual bookkeeping (errors are reported to the caller as null).
+///
+/// N2: Skips if today's file already exists — no need to export on every
+/// state refresh. The daily backup fires on the first mutation of the day.
 Future<File?> writeAutoBackup(AppDb db, Directory dir) async {
   try {
-    final snapshot = await exportSnapshot(db);
     final now = DateTime.now();
     final stamp =
         '${now.year.toString().padLeft(4, '0')}-'
         '${now.month.toString().padLeft(2, '0')}-'
         '${now.day.toString().padLeft(2, '0')}';
     final file = File('${dir.path}/$autoBackupPrefix$stamp.json');
+    // N2: skip if today's backup already exists.
+    if (file.existsSync()) return file;
+    final snapshot = await exportSnapshot(db);
     await file.writeAsString(exportSnapshotJson(snapshot));
     final old = listAutoBackups(dir).skip(autoBackupKeep);
     for (final f in old) {

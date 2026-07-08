@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quickbucks_domain/quickbucks_domain.dart' as domain;
 
 import '../data/db.dart';
 import '../data/repo.dart';
@@ -266,7 +265,11 @@ class LoanDetailScreen extends StatelessWidget {
           fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
         ),
       ),
-      subtitle: Text(prettyDate(fromIso(loan.loanDate))),
+      subtitle: Text(
+        loan.status == 'active'
+            ? '${prettyDate(fromIso(loan.loanDate))} · ${money(out)} remaining'
+            : prettyDate(fromIso(loan.loanDate)),
+      ),
       onTap: isCurrent
           ? null
           : () => Navigator.push(
